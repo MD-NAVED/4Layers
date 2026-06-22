@@ -3,9 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Default fallback to localhost
-let baseURL = 'http://127.0.0.1:8000';
+// Production Render API base URL
+let baseURL = 'https://smartnest-3jr4.onrender.com';
 
+// Dev override (commented out to force production server usage)
+/*
 if (__DEV__) {
   // Constants.expoConfig?.hostUri has the host IP and port of the development server (e.g. 192.168.1.100:8081)
   const hostUri = Constants.expoConfig?.hostUri;
@@ -17,6 +19,7 @@ if (__DEV__) {
     baseURL = 'http://10.0.2.2:8000';
   }
 }
+*/
 
 console.log(`[SmartNest API Client] Initialized. Base URL: ${baseURL}`);
 
