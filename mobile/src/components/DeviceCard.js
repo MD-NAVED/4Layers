@@ -1,7 +1,11 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Card, Text, Switch, IconButton, useTheme } from 'react-native-paper';
+import { StyleSheet, View, TouchableOpacity, Dimensions } from 'react-native';
+import { Text, IconButton, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+// Calculate grid card size (roughly half screen width minus margins)
+const { width } = Dimensions.get('window');
+const CARD_SIZE = (width - 48) / 2;
 
 export default function DeviceCard({ device, onToggle, onDelete }) {
   const theme = useTheme();
@@ -10,117 +14,164 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
   const getDeviceIcon = () => {
     switch (device.type) {
       case 'light':
-        return device.status ? 'lightbulb' : 'lightbulb-outline';
+        return device.status ? 'lightbulb-on' : 'lightbulb-outline';
       case 'fan':
         return 'fan';
       case 'AC':
         return 'air-conditioner';
       default:
-        return 'cellphone-link';
+        return 'developer-board';
     }
   };
 
-  // Determine icon color based on active state
-  const getIconColor = () => {
-    if (!device.status) return theme.colors.onSurfaceDisabled;
+  // Determine neon glow color based on device type
+  const getGlowColor = () => {
+    if (!device.status) return 'transparent';
     switch (device.type) {
       case 'light':
-        return '#EAB308'; // Warm Yellow
+        return theme.colors.primary;   // Neon Purple (#7C3AED)
       case 'fan':
-        return '#06B6D4'; // Cool Cyan
+        return theme.colors.secondary; // Neon Pink (#EC4899)
       case 'AC':
-        return '#3B82F6'; // Indigo Blue
+        return '#06B6D4';              // Neon Cyan
       default:
         return theme.colors.primary;
     }
   };
 
-  return (
-    <Card style={styles.card}>
-      <Card.Content style={styles.content}>
-        {/* Left Side: Device Icon and Info */}
-        <View style={styles.leftSection}>
-          <View style={[styles.iconWrapper, { backgroundColor: device.status ? theme.colors.elevation.level2 : theme.colors.elevation.level1 }]}>
-            <MaterialCommunityIcons 
-              name={getDeviceIcon()} 
-              size={32} 
-              color={getIconColor()} 
-            />
-          </View>
-          <View style={styles.infoWrapper}>
-            <Text style={styles.deviceName} numberOfLines={1}>{device.name}</Text>
-            <Text style={styles.deviceType}>{device.type.toUpperCase()}</Text>
-          </View>
-        </View>
+  // Determine icon color based on active state
+  const getIconColor = () => {
+    if (!device.status) return 'rgba(148, 163, 184, 0.4)'; // Muted slate gray
+    switch (device.type) {
+      case 'light':
+        return '#A78BFA'; // Light Purple neon
+      case 'fan':
+        return '#F472B6'; // Soft Pink neon
+      case 'AC':
+        return '#22D3EE'; // Cool Cyan neon
+      default:
+        return theme.colors.primary;
+    }
+  };
 
-        {/* Right Side: Toggle Switch and Delete Action */}
-        <View style={styles.rightSection}>
-          <Switch
-            value={device.status}
-            onValueChange={(val) => onToggle(device.id, val)}
-            color={theme.colors.primary}
-          />
-          <IconButton
-            icon="trash-can-outline"
-            iconColor={theme.colors.error}
-            size={22}
-            onPress={() => onDelete(device.id)}
-            style={styles.deleteButton}
-          />
-        </View>
-      </Card.Content>
-    </Card>
+  const glowColor = getGlowColor();
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onToggle(device.id, !device.status)}
+      style={[
+        styles.cardContainer,
+        {
+          backgroundColor: device.status ? '#1E1E38' : '#121225',
+          borderColor: device.status ? glowColor : '#22223B',
+          borderWidth: device.status ? 2 : 1.5,
+          // Shadow glow effect when ON
+          shadowColor: glowColor,
+          shadowOpacity: device.status ? 0.6 : 0,
+          shadowRadius: device.status ? 14 : 0,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: device.status ? 8 : 1,
+        }
+      ]}
+    >
+      {/* Top right corner: Small unobtrusive Delete Button */}
+      <IconButton
+        icon="close-circle-outline"
+        iconColor={device.status ? 'rgba(255, 255, 255, 0.3)' : 'rgba(148, 163, 184, 0.3)'}
+        size={18}
+        onPress={() => onDelete(device.id)}
+        style={styles.deleteBtn}
+      />
+
+      {/* Center Section: Large Glowing Icon */}
+      <View style={[
+        styles.iconContainer,
+        device.status && {
+          backgroundColor: 'rgba(124, 58, 237, 0.1)',
+          shadowColor: glowColor,
+          shadowOpacity: 0.8,
+          shadowRadius: 15,
+        }
+      ]}>
+        <MaterialCommunityIcons 
+          name={getDeviceIcon()} 
+          size={42} 
+          color={getIconColor()} 
+        />
+      </View>
+
+      {/* Bottom Section: Device Label & Category */}
+      <View style={styles.textContainer}>
+        <Text style={[
+          styles.deviceName,
+          { color: device.status ? '#F8FAFC' : '#94A3B8' }
+        ]} numberOfLines={1}>
+          {device.name}
+        </Text>
+        <Text style={styles.deviceType}>
+          {device.type.toUpperCase()}
+        </Text>
+      </View>
+
+      {/* Active Dot Status */}
+      <View style={[
+        styles.statusDot,
+        { backgroundColor: device.status ? glowColor : '#374151' }
+      ]} />
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 12,
-    borderRadius: 16,
-    elevation: 2,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardContainer: {
+    width: CARD_SIZE,
+    height: CARD_SIZE,
+    borderRadius: 24,
+    padding: 16,
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  leftSection: {
-    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 16,
+    position: 'relative',
   },
-  iconWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  deleteBtn: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    margin: 0,
+    zIndex: 10,
+  },
+  iconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginTop: 10,
   },
-  infoWrapper: {
-    flex: 1,
-    justifyContent: 'center',
+  textContainer: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 4,
   },
   deviceName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   deviceType: {
-    fontSize: 12,
-    color: '#8492A6',
+    fontSize: 10,
+    color: '#64748B',
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  deleteButton: {
-    marginLeft: 4,
-    marginRight: -8,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    position: 'absolute',
+    bottom: 12,
   },
 });

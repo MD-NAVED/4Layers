@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -113,8 +113,8 @@ export default function AppNavigator() {
   if (state.isLoading) {
     // Spinner screen while loading token status
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F172A' }}>
-        <ActivityIndicator size="large" color="#6366F1" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0F' }}>
+        <ActivityIndicator size="large" color="#7C3AED" />
       </View>
     );
   }
@@ -140,25 +140,43 @@ export default function AppNavigator() {
               tabBarIcon: ({ color, size }) => {
                 let iconName;
                 if (route.name === 'HomeTab') {
-                  iconName = 'home-outline';
+                  iconName = 'home-variant';
                 } else if (route.name === 'HistoryTab') {
-                  iconName = 'clock-outline';
+                  iconName = 'clock-digital';
                 }
-                return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+                return <MaterialCommunityIcons name={iconName} size={size + 2} color={color} />;
               },
-              tabBarActiveTintColor: theme.colors.primary,
-              tabBarInactiveTintColor: theme.colors.onSurfaceDisabled,
+              tabBarActiveTintColor: theme.colors.secondary,
+              tabBarInactiveTintColor: 'rgba(148, 163, 184, 0.4)',
               tabBarStyle: {
-                backgroundColor: theme.colors.surface,
-                borderTopColor: theme.colors.outlineVariant,
-                height: 60,
-                paddingBottom: 8,
+                position: 'absolute',
+                bottom: 24,
+                left: 24,
+                right: 24,
+                elevation: 10,
+                backgroundColor: 'rgba(26, 26, 46, 0.95)', // Translucent cards background
+                borderRadius: 32,
+                height: 68,
+                borderTopWidth: 0,
+                borderWidth: 1.5,
+                borderColor: 'rgba(124, 58, 237, 0.3)', // Subtle neon purple outline
+                shadowColor: '#7C3AED', // Neon purple shadow glow
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.4,
+                shadowRadius: 16,
+                paddingBottom: Platform.OS === 'ios' ? 12 : 8,
                 paddingTop: 8,
               },
-              headerStyle: { backgroundColor: theme.colors.surface },
+              headerStyle: { 
+                backgroundColor: theme.colors.background,
+                elevation: 0,
+                shadowOpacity: 0,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(124, 58, 237, 0.1)',
+              },
               headerTintColor: theme.colors.onSurface,
-              headerTitleStyle: { fontWeight: 'bold' },
-              tabBarLabelStyle: { fontSize: 12 },
+              headerTitleStyle: { fontWeight: '900', letterSpacing: 0.8 },
+              tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: -2 },
             })}
           >
             <Tab.Screen 

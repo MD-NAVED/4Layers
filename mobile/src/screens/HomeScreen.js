@@ -13,12 +13,27 @@ export default function HomeScreen({ navigation }) {
   const { signOut } = useAuth();
   
   const [devices, setDevices] = useState([]);
+  const [username, setUsername] = useState('User');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
   // Dialog state for device deletion
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState(null);
+
+  // Fetch authenticated user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await apiClient.get('/api/users/me');
+      if (response.data && response.data.username) {
+        // Capitalize username
+        const name = response.data.username;
+        setUsername(name.charAt(0).toUpperCase() + name.slice(1));
+      }
+    } catch (error) {
+      console.error('[Home] Error fetching user profile:', error);
+    }
+  };
 
   // Fetch device list from backend
   const fetchDevices = async (showLoadingIndicator = false) => {
@@ -34,14 +49,14 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Setup polling (every 5 seconds) and initial fetch using useFocusEffect
-  // This automatically starts polling when the home tab is active and stops it when navigated away.
+  // Setup polling and initial fetch when screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchDevices(devices.length === 0); // show loader only on empty load
+      fetchUserProfile();
+      fetchDevices(devices.length === 0);
       
       const intervalId = setInterval(() => {
-        fetchDevices(false); // poll silently in background
+        fetchDevices(false);
       }, 5000);
 
       return () => {
@@ -56,11 +71,11 @@ export default function HomeScreen({ navigation }) {
     fetchDevices(false);
   };
 
-  // Toggle device state ON/OFF
+  // Toggle device state
   const handleToggleDevice = async (id, currentVal) => {
     const targetState = currentVal ? 'ON' : 'OFF';
 
-    // Optimistic UI update: update local state immediately for snappy response
+    // Optimistic UI state update
     setDevices((prevDevices) =>
       prevDevices.map((d) => (d.id === id ? { ...d, status: currentVal } : d))
     );
@@ -69,12 +84,10 @@ export default function HomeScreen({ navigation }) {
       await apiClient.post(`/api/devices/${id}/control`, {
         status: targetState,
       });
-      // The background poll will sync confirmed states via MQTT,
-      // but let's fetch once quickly to update
       fetchDevices(false);
     } catch (error) {
       console.error('[Home] Error controlling device:', error);
-      // Revert state on error
+      // Revert local state on failure
       setDevices((prevDevices) =>
         prevDevices.map((d) => (d.id === id ? { ...d, status: !currentVal } : d))
       );
@@ -96,7 +109,6 @@ export default function HomeScreen({ navigation }) {
     if (!deviceToDelete) return;
     try {
       await apiClient.delete(`/api/devices/${deviceToDelete}`);
-      // Remove deleted device from local state
       setDevices((prevDevices) => prevDevices.filter((d) => d.id !== deviceToDelete));
       hideDeleteDialog();
     } catch (error) {
@@ -109,14 +121,22 @@ export default function HomeScreen({ navigation }) {
     navigation.getParent()?.setOptions({
       headerRight: () => (
         <IconButton
-          icon="logout"
-          iconColor={theme.colors.onSurface}
+          icon="power"
+          iconColor={theme.colors.secondary}
           size={24}
           onPress={signOut}
         />
       ),
     });
   }, [navigation]);
+
+  // List Header Component to render greeting and control description
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <Text style={styles.greetingText}>Hi {username},</Text>
+      <Text style={styles.subtitleText}>Control center is online.</Text>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -131,25 +151,33 @@ export default function HomeScreen({ navigation }) {
       {devices.length === 0 ? (
         // Empty State
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="home-assistant" size={80} color="#334155" />
-          <Text style={styles.emptyTitle}>No Devices Added</Text>
-          <Text style={styles.emptySubtitle}>
-            Add a device to begin managing your home automation.
-          </Text>
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.navigate('AddDevice')}
-            style={styles.addFirstBtn}
-            icon="plus"
-          >
-            Add Device
-          </Button>
+          {renderHeader()}
+          <View style={styles.emptyContent}>
+            <MaterialCommunityIcons name="radar" size={90} color="rgba(124, 58, 237, 0.2)" />
+            <Text style={styles.emptyTitle}>Grid Offline</Text>
+            <Text style={styles.emptySubtitle}>
+              No devices linked to this smart node. Create one to initialize the grid.
+            </Text>
+            <Button 
+              mode="contained" 
+              onPress={() => navigation.navigate('AddDevice')}
+              style={styles.addFirstBtn}
+              contentStyle={{ paddingVertical: 4 }}
+              icon="plus"
+            >
+              Link Device
+            </Button>
+          </View>
         </View>
       ) : (
-        // Device List
+        // 2x2 Device Grid List
         <FlatList
           data={devices}
           keyExtractor={(item) => item.id.toString()}
+          numColumns={2}
+          columnWrapperStyle={styles.gridRow}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
             <DeviceCard
               device={item}
@@ -157,7 +185,6 @@ export default function HomeScreen({ navigation }) {
               onDelete={showDeleteDialog}
             />
           )}
-          contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -169,25 +196,35 @@ export default function HomeScreen({ navigation }) {
         />
       )}
 
-      {/* Floating Action Button (FAB) */}
+      {/* Futuristic Floating Action Button (FAB) */}
       <FAB
         icon="plus"
-        label="Add Device"
+        label="Link Node"
         color="#F8FAFC"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        style={[
+          styles.fab,
+          { 
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+            shadowOpacity: 0.6,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 8,
+          }
+        ]}
         onPress={() => navigation.navigate('AddDevice')}
       />
 
-      {/* Deletion Dialog */}
+      {/* Cyberpunk Dialog for Delete Confirmation */}
       <Portal>
         <Dialog visible={deleteDialogVisible} onDismiss={hideDeleteDialog} style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Delete Device</Dialog.Title>
+          <Dialog.Title style={styles.dialogTitle}>Terminate Node Link?</Dialog.Title>
           <Dialog.Content>
-            <Text style={styles.dialogBody}>Are you sure you want to remove this device? This will erase all its configuration and logging history.</Text>
+            <Text style={styles.dialogBody}>This will disconnect the hardware node from your smart net. Logs and local database entries will be erased.</Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={hideDeleteDialog} labelStyle={{ color: '#94A3B8' }}>Cancel</Button>
-            <Button onPress={handleDeleteDevice} labelStyle={{ color: theme.colors.error }}>Delete</Button>
+            <Button onPress={hideDeleteDialog} labelStyle={{ color: '#94A3B8', fontWeight: 'bold' }}>Abort</Button>
+            <Button onPress={handleDeleteDevice} labelStyle={{ color: theme.colors.secondary, fontWeight: 'bold' }}>Disconnect</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -198,61 +235,92 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0A0A0F',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0A0A0F',
+  },
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  greetingText: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    letterSpacing: 0.5,
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 4,
+    letterSpacing: 0.5,
+    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
-    paddingBottom: 90, // room for FAB
+    paddingBottom: 120, // space to float past the bottom pill bar and FAB
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 8,
-    bottom: 8,
+    bottom: 104, // sits cleanly above the floating tab bar
     borderRadius: 28,
   },
   emptyContainer: {
     flex: 1,
+  },
+  emptyContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    marginTop: 40,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#F8FAFC',
     marginTop: 16,
+    letterSpacing: 0.5,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#64748B',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
+    marginTop: 10,
+    lineHeight: 22,
   },
   addFirstBtn: {
-    marginTop: 24,
-    borderRadius: 12,
-    paddingHorizontal: 8,
+    marginTop: 32,
+    borderRadius: 14,
+    paddingHorizontal: 12,
   },
   dialog: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#16162a',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(124, 58, 237, 0.3)',
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
   dialogTitle: {
     color: '#F8FAFC',
-    fontWeight: 'bold',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   dialogBody: {
     color: '#94A3B8',
-    lineHeight: 20,
+    lineHeight: 22,
   },
 });

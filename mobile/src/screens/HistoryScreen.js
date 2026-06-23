@@ -81,27 +81,27 @@ export default function HistoryScreen() {
     switch (changeType) {
       case 'device_created':
         return {
-          label: 'Device Created',
-          icon: 'plus-circle',
-          color: '#10B981', // green
+          label: 'NODE REGISTERED',
+          icon: 'plus-circle-outline',
+          color: '#10B981', // emerald green
         };
       case 'command_sent':
         return {
-          label: 'Command Sent',
-          icon: 'arrow-right-bold-circle',
-          color: '#3B82F6', // blue
+          label: 'TRANSMIT TRIGGER',
+          icon: 'radiobox-marked',
+          color: '#7C3AED', // neon purple
         };
       case 'status_confirmed':
         return {
-          label: 'State Confirmed',
-          icon: 'check-circle',
-          color: '#14B8A6', // teal
+          label: 'SYNC CONFIRMED',
+          icon: 'checkbox-marked-circle-outline',
+          color: '#EC4899', // neon pink
         };
       default:
         return {
-          label: 'Event Log',
-          icon: 'information-slab-circle',
-          color: theme.colors.primary,
+          label: 'NODE TELEMETRY',
+          icon: 'server-network',
+          color: '#94A3B8',
         };
     }
   };
@@ -110,7 +110,6 @@ export default function HistoryScreen() {
   const formatTimestamp = (dateStr) => {
     try {
       const d = new Date(dateStr);
-      // Format: YYYY-MM-DD HH:MM:SS
       const pad = (num) => String(num).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     } catch (e) {
@@ -131,17 +130,17 @@ export default function HistoryScreen() {
       {devices.length === 0 ? (
         // Empty State
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="timeline-text-outline" size={80} color="#334155" />
-          <Text style={styles.emptyTitle}>No Device Logs</Text>
+          <MaterialCommunityIcons name="clipboard-alert-outline" size={80} color="rgba(124, 58, 237, 0.15)" />
+          <Text style={styles.emptyTitle}>Telemetry Offline</Text>
           <Text style={styles.emptySubtitle}>
-            Add and control devices to start logging operational events.
+            No devices are currently connected. Logs will generate once node triggers execute.
           </Text>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
           {/* Horizontal scroll selection for devices */}
           <View style={styles.headerSelection}>
-            <Text style={styles.selectionLabel}>Select Device:</Text>
+            <Text style={styles.selectionLabel}>Select active node:</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -156,10 +155,21 @@ export default function HistoryScreen() {
                     onPress={() => handleSelectDevice(device)}
                     style={[
                       styles.deviceChip, 
-                      isSelected && { backgroundColor: theme.colors.primary }
+                      isSelected ? { 
+                        backgroundColor: theme.colors.primary,
+                        shadowColor: theme.colors.primary,
+                        shadowOpacity: 0.5,
+                        shadowRadius: 8,
+                        elevation: 3,
+                      } : {
+                        backgroundColor: '#121225'
+                      }
                     ]}
                     selectedColor="#F8FAFC"
-                    textStyle={[styles.chipText, isSelected && { fontWeight: 'bold' }]}
+                    textStyle={[
+                      styles.chipText, 
+                      isSelected && { fontWeight: 'bold', color: '#F8FAFC' }
+                    ]}
                     showSelectedOverlay
                   >
                     {device.name}
@@ -176,10 +186,10 @@ export default function HistoryScreen() {
             </View>
           ) : history.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="playlist-remove" size={64} color="#334155" />
-              <Text style={styles.emptyTitle}>No Events Logged</Text>
+              <MaterialCommunityIcons name="dots-horizontal-circle-outline" size={64} color="rgba(124, 58, 237, 0.1)" />
+              <Text style={styles.emptyTitle}>Log Index Empty</Text>
               <Text style={styles.emptySubtitle}>
-                No operations recorded for {selectedDevice?.name || 'this device'} yet.
+                No log sequence recorded for {selectedDevice?.name || 'this node'} yet.
               </Text>
             </View>
           ) : (
@@ -200,13 +210,13 @@ export default function HistoryScreen() {
                   <View style={styles.timelineItem}>
                     {/* Left Timeline Indicator */}
                     <View style={styles.timelineLeft}>
-                      <MaterialCommunityIcons name={logStyle.icon} size={28} color={logStyle.color} />
+                      <MaterialCommunityIcons name={logStyle.icon} size={26} color={logStyle.color} />
                       {index < history.length - 1 && <View style={styles.timelineLine} />}
                     </View>
                     
                     {/* Right Timeline Card Details */}
                     <Card style={styles.timelineCard}>
-                      <Card.Content>
+                      <Card.Content style={styles.cardContent}>
                         <View style={styles.cardHeader}>
                           <Text style={[styles.eventLabel, { color: logStyle.color }]}>
                             {logStyle.label}
@@ -215,21 +225,25 @@ export default function HistoryScreen() {
                         </View>
                         
                         {item.change_type === 'device_created' && (
-                          <Text style={styles.eventDesc}>Device registered. Initial state is OFF.</Text>
+                          <Text style={styles.eventDesc}>Node handshake complete. Default state: <Text style={styles.offStateText}>OFF</Text></Text>
                         )}
 
                         {item.change_type === 'command_sent' && (
                           <Text style={styles.eventDesc}>
-                            Requested state change from{' '}
-                            <Text style={styles.boldText}>{item.previous_state}</Text> to{' '}
-                            <Text style={[styles.boldText, { color: theme.colors.primary }]}>{item.new_state}</Text>.
+                            Signal sent: Toggled from{' '}
+                            <Text style={item.previous_state === 'ON' ? styles.onStateText : styles.offStateText}>
+                              {item.previous_state}
+                            </Text>{' '}
+                            →{' '}
+                            <Text style={item.new_state === 'ON' ? styles.onStateText : styles.offStateText}>
+                              {item.new_state}
+                            </Text>
                           </Text>
                         )}
 
                         {item.change_type === 'status_confirmed' && (
                           <Text style={styles.eventDesc}>
-                            Device reported state change. Confirmed to be{' '}
-                            <Text style={[styles.boldText, { color: '#14B8A6' }]}>{item.new_state}</Text>.
+                            Node confirmation packet received. Confirmed state: <Text style={item.new_state === 'ON' ? styles.onStateText : styles.offStateText}>{item.new_state}</Text>
                           </Text>
                         )}
                       </Card.Content>
@@ -248,86 +262,101 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0A0A0F',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0A0A0F',
   },
   headerSelection: {
-    backgroundColor: '#1E293B',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    backgroundColor: '#121225',
+    paddingVertical: 14,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#22223B',
   },
   selectionLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
-    color: '#94A3B8',
+    color: '#64748B',
     marginLeft: 16,
-    marginBottom: 6,
+    marginBottom: 8,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   deviceSlider: {
     paddingHorizontal: 12,
   },
   deviceChip: {
     marginHorizontal: 4,
-    backgroundColor: '#334155',
-    borderRadius: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#22223B',
   },
   chipText: {
-    color: '#F8FAFC',
+    color: '#94A3B8',
     fontSize: 13,
   },
   timelineList: {
     padding: 16,
+    paddingBottom: 120, // space to avoid bottom floating pill navigator
   },
   timelineItem: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   timelineLeft: {
     alignItems: 'center',
-    marginRight: 12,
-    width: 28,
+    marginRight: 14,
+    width: 26,
   },
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: '#334155',
+    backgroundColor: '#22223B',
     marginTop: 4,
   },
   timelineCard: {
     flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 8,
+    backgroundColor: '#121225',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#22223B',
+    marginBottom: 12,
+  },
+  cardContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   eventLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.6,
   },
   timestamp: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 10,
+    color: '#475569',
+    fontWeight: '600',
   },
   eventDesc: {
     fontSize: 13,
     color: '#E2E8F0',
     lineHeight: 18,
+    fontWeight: '500',
   },
-  boldText: {
+  onStateText: {
+    color: '#EC4899', // Cyber pink for ON
+    fontWeight: 'bold',
+  },
+  offStateText: {
+    color: '#94A3B8', // Slate gray for OFF
     fontWeight: 'bold',
   },
   emptyContainer: {
@@ -337,15 +366,17 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '900',
     color: '#F8FAFC',
     marginTop: 16,
+    letterSpacing: 0.5,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#64748B',
     textAlign: 'center',
     marginTop: 8,
+    lineHeight: 20,
   },
 });
