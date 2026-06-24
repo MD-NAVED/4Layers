@@ -83,25 +83,25 @@ export default function HistoryScreen() {
         return {
           label: 'NODE REGISTERED',
           icon: 'plus-circle-outline',
-          color: '#10B981', // emerald green
+          color: '#22C55E', // green
         };
       case 'command_sent':
         return {
           label: 'TRANSMIT TRIGGER',
           icon: 'radiobox-marked',
-          color: '#7C3AED', // neon purple
+          color: '#9CA3AF', // gray
         };
       case 'status_confirmed':
         return {
           label: 'SYNC CONFIRMED',
           icon: 'checkbox-marked-circle-outline',
-          color: '#EC4899', // neon pink
+          color: '#22C55E', // green
         };
       default:
         return {
           label: 'NODE TELEMETRY',
           icon: 'server-network',
-          color: '#94A3B8',
+          color: '#9CA3AF',
         };
     }
   };
@@ -130,7 +130,7 @@ export default function HistoryScreen() {
       {devices.length === 0 ? (
         // Empty State
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="clipboard-alert-outline" size={80} color="rgba(124, 58, 237, 0.15)" />
+          <MaterialCommunityIcons name="clipboard-alert-outline" size={80} color="rgba(34, 197, 94, 0.15)" />
           <Text style={styles.emptyTitle}>Telemetry Offline</Text>
           <Text style={styles.emptySubtitle}>
             No devices are currently connected. Logs will generate once node triggers execute.
@@ -156,19 +156,15 @@ export default function HistoryScreen() {
                     style={[
                       styles.deviceChip, 
                       isSelected ? { 
-                        backgroundColor: theme.colors.primary,
-                        shadowColor: theme.colors.primary,
-                        shadowOpacity: 0.5,
-                        shadowRadius: 8,
-                        elevation: 3,
+                        backgroundColor: '#22C55E',
                       } : {
-                        backgroundColor: '#121225'
+                        backgroundColor: '#1A1A1A'
                       }
                     ]}
-                    selectedColor="#F8FAFC"
+                    selectedColor={isSelected ? '#000000' : '#FFFFFF'}
                     textStyle={[
                       styles.chipText, 
-                      isSelected && { fontWeight: 'bold', color: '#F8FAFC' }
+                      isSelected && { fontWeight: '700', color: '#000000' }
                     ]}
                     showSelectedOverlay
                   >
@@ -186,7 +182,7 @@ export default function HistoryScreen() {
             </View>
           ) : history.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="dots-horizontal-circle-outline" size={64} color="rgba(124, 58, 237, 0.1)" />
+              <MaterialCommunityIcons name="dots-horizontal-circle-outline" size={64} color="rgba(34, 197, 94, 0.1)" />
               <Text style={styles.emptyTitle}>Log Index Empty</Text>
               <Text style={styles.emptySubtitle}>
                 No log sequence recorded for {selectedDevice?.name || 'this node'} yet.
@@ -262,45 +258,45 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   headerSelection: {
-    backgroundColor: '#121225',
+    backgroundColor: '#1A1A1A',
     paddingVertical: 14,
     borderBottomWidth: 1.5,
-    borderBottomColor: '#22223B',
+    borderBottomColor: '#262626',
   },
   selectionLabel: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#64748B',
+    fontWeight: '700',
+    color: '#9CA3AF',
     marginLeft: 16,
     marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   deviceSlider: {
     paddingHorizontal: 12,
   },
   deviceChip: {
     marginHorizontal: 4,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#22223B',
+    borderColor: '#262626',
   },
   chipText: {
-    color: '#94A3B8',
+    color: '#FFFFFF',
     fontSize: 13,
   },
   timelineList: {
     padding: 16,
-    paddingBottom: 120, // space to avoid bottom floating pill navigator
+    paddingBottom: 120,
   },
   timelineItem: {
     flexDirection: 'row',
@@ -314,16 +310,17 @@ const styles = StyleSheet.create({
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: '#22223B',
+    backgroundColor: '#262626',
     marginTop: 4,
   },
   timelineCard: {
     flex: 1,
-    backgroundColor: '#121225',
-    borderRadius: 20,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#22223B',
+    borderColor: '#262626',
     marginBottom: 12,
+    elevation: 0,
   },
   cardContent: {
     paddingVertical: 12,
@@ -336,28 +333,28 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   eventLabel: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.6,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   timestamp: {
     fontSize: 10,
-    color: '#475569',
+    color: '#9CA3AF',
     fontWeight: '600',
   },
   eventDesc: {
     fontSize: 13,
-    color: '#E2E8F0',
+    color: '#FFFFFF',
     lineHeight: 18,
     fontWeight: '500',
   },
   onStateText: {
-    color: '#EC4899', // Cyber pink for ON
-    fontWeight: 'bold',
+    color: '#22C55E',
+    fontWeight: '700',
   },
   offStateText: {
-    color: '#94A3B8', // Slate gray for OFF
-    fontWeight: 'bold',
+    color: '#9CA3AF',
+    fontWeight: '700',
   },
   emptyContainer: {
     flex: 1,
@@ -367,14 +364,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '900',
-    color: '#F8FAFC',
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginTop: 16,
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,

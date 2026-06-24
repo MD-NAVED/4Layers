@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, TextInput, SegmentedButtons, Snackbar, useTheme } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../api/client';
 
 export default function AddDeviceScreen({ navigation }) {
@@ -59,9 +58,9 @@ export default function AddDeviceScreen({ navigation }) {
             onChangeText={setName}
             mode="outlined"
             maxLength={50}
-            textColor="#F8FAFC"
-            activeOutlineColor="#7C3AED"
-            outlineColor="rgba(124, 58, 237, 0.2)"
+            textColor="#FFFFFF"
+            activeOutlineColor="#22C55E"
+            outlineColor="#262626"
             style={styles.input}
           />
 
@@ -71,8 +70,8 @@ export default function AddDeviceScreen({ navigation }) {
             onValueChange={setType}
             theme={{
               colors: {
-                secondaryContainer: '#1E1E38', // active background
-                onSecondaryContainer: '#F8FAFC', // active text
+                secondaryContainer: '#22C55E', // active background
+                onSecondaryContainer: '#000000', // active text
               }
             }}
             buttons={[
@@ -98,21 +97,14 @@ export default function AddDeviceScreen({ navigation }) {
             style={styles.segmentedButtons}
           />
 
-          {/* Gradient Submit Button */}
+          {/* Clean Submit Button */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleAddDevice}
             disabled={loading}
-            style={styles.submitBtnWrapper}
+            style={[styles.submitBtn, { opacity: loading ? 0.7 : 1 }]}
           >
-            <LinearGradient
-              colors={['#7C3AED', '#EC4899']}
-              style={styles.gradientBtn}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={styles.btnText}>Initialize Link</Text>
-            </LinearGradient>
+            <Text style={styles.btnText}>Initialize Link</Text>
           </TouchableOpacity>
 
           {/* Abort button */}
@@ -130,14 +122,14 @@ export default function AddDeviceScreen({ navigation }) {
           visible={showSnackbar}
           onDismiss={() => setShowSnackbar(false)}
           duration={3000}
-          style={{ backgroundColor: theme.colors.errorContainer, borderWidth: 1, borderColor: theme.colors.error }}
+          style={{ backgroundColor: '#7F1D1D', borderWidth: 1, borderColor: '#EF4444' }}
           action={{
             label: 'OK',
-            textColor: theme.colors.onErrorContainer,
+            textColor: '#FCA5A5',
             onPress: () => setShowSnackbar(false),
           }}
         >
-          <Text style={{ color: theme.colors.onErrorContainer, fontWeight: 'bold' }}>{errorMsg}</Text>
+          <Text style={{ color: '#FCA5A5', fontWeight: 'bold' }}>{errorMsg}</Text>
         </Snackbar>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -147,79 +139,71 @@ export default function AddDeviceScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   scrollContainer: {
     flexGrow: 1,
     padding: 16,
-    paddingBottom: 120, // space to avoid bottom floating bar
+    paddingBottom: 120,
   },
   formCard: {
-    backgroundColor: '#121225',
-    borderRadius: 28,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
     padding: 24,
     borderWidth: 1.5,
-    borderColor: '#22223B',
-    elevation: 3,
+    borderColor: '#262626',
     marginTop: 8,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
     marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   input: {
     marginBottom: 24,
-    backgroundColor: '#121225',
+    backgroundColor: '#0D0D0D',
   },
   segmentedButtons: {
     marginBottom: 32,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
     borderRadius: 8,
-    borderColor: '#22223B',
+    borderColor: '#262626',
   },
   segmentLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
-  submitBtnWrapper: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    marginBottom: 12,
-  },
-  gradientBtn: {
+  submitBtn: {
+    borderRadius: 8,
+    backgroundColor: '#22C55E',
     paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
   },
   btnText: {
-    color: '#F8FAFC',
-    fontWeight: 'bold',
+    color: '#000000',
+    fontWeight: '700',
     fontSize: 15,
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   cancelBtn: {
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: '#262626',
     paddingVertical: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: '#94A3B8',
-    fontWeight: 'bold',
+    color: '#9CA3AF',
+    fontWeight: '700',
     fontSize: 15,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
 });

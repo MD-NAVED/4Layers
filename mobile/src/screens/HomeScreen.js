@@ -118,7 +118,7 @@ export default function HomeScreen({ navigation }) {
 
   // Header options: add logout button
   useEffect(() => {
-    navigation.getParent()?.setOptions({
+    navigation.setOptions({
       headerRight: () => (
         <IconButton
           icon="power"
@@ -128,7 +128,7 @@ export default function HomeScreen({ navigation }) {
         />
       ),
     });
-  }, [navigation]);
+  }, [navigation, theme, signOut]);
 
   // List Header Component to render greeting and control description
   const renderHeader = () => (
@@ -153,7 +153,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.emptyContainer}>
           {renderHeader()}
           <View style={styles.emptyContent}>
-            <MaterialCommunityIcons name="radar" size={90} color="rgba(124, 58, 237, 0.2)" />
+            <MaterialCommunityIcons name="radar" size={90} color="rgba(34, 197, 94, 0.2)" />
             <Text style={styles.emptyTitle}>Grid Offline</Text>
             <Text style={styles.emptySubtitle}>
               No devices linked to this smart node. Create one to initialize the grid.
@@ -196,20 +196,16 @@ export default function HomeScreen({ navigation }) {
         />
       )}
 
-      {/* Futuristic Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) */}
       <FAB
         icon="plus"
         label="Link Node"
-        color="#F8FAFC"
+        color="#000000"
         style={[
           styles.fab,
           { 
             backgroundColor: theme.colors.primary,
-            shadowColor: theme.colors.primary,
-            shadowOpacity: 0.6,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 0 },
-            elevation: 8,
+            elevation: 4,
           }
         ]}
         onPress={() => navigation.navigate('AddDevice')}
@@ -235,13 +231,13 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   headerContainer: {
     paddingHorizontal: 16,
@@ -250,13 +246,13 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#F8FAFC',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   subtitleText: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     marginTop: 4,
     letterSpacing: 0.5,
     fontWeight: '500',
@@ -288,39 +284,36 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 22,
-    fontWeight: '900',
-    color: '#F8FAFC',
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginTop: 16,
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 10,
     lineHeight: 22,
   },
   addFirstBtn: {
     marginTop: 32,
-    borderRadius: 14,
+    borderRadius: 8,
     paddingHorizontal: 12,
   },
   dialog: {
-    backgroundColor: '#16162a',
-    borderRadius: 24,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(124, 58, 237, 0.3)',
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
+    borderColor: '#262626',
   },
   dialogTitle: {
-    color: '#F8FAFC',
-    fontWeight: '900',
+    color: '#FFFFFF',
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   dialogBody: {
-    color: '#94A3B8',
+    color: '#9CA3AF',
     lineHeight: 22,
   },
 });

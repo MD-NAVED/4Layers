@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Snackbar, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
 
@@ -19,9 +19,21 @@ export default function LoginScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
 
+  // Clear stale token on land/mount to guarantee clean login handshake state
+  useEffect(() => {
+    const clearStaleToken = async () => {
+      try {
+        await AsyncStorage.removeItem('user_token');
+      } catch (e) {
+        console.error('[Login] Error clearing stale token:', e);
+      }
+    };
+    clearStaleToken();
+  }, []);
+
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      setErrorMsg('Please enter credentials to initialize sync.');
+      setErrorMsg('Please enter credentials to initialize connection.');
       setShowSnackbar(true);
       return;
     }
@@ -30,8 +42,7 @@ export default function LoginScreen({ navigation }) {
     setErrorMsg('');
 
     try {
-      // FastAPI login expects x-www-form-urlencoded form data
-      const urlEncodedBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+      const urlEncodedBody = `username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password)}`;
       
       const response = await apiClient.post('/api/users/login', urlEncodedBody, {
         headers: {
@@ -43,7 +54,7 @@ export default function LoginScreen({ navigation }) {
       if (access_token) {
         await signIn(access_token);
       } else {
-        throw new Error('Sync failed');
+        throw new Error('Access denied');
       }
     } catch (error) {
       console.error('[Login] Sync Error:', error);
@@ -61,93 +72,73 @@ export default function LoginScreen({ navigation }) {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        {/* Top Header Section with Glowing Orb */}
+        {/* Top Header Section with simple modern logo */}
         <View style={styles.headerSection}>
-          {/* Glowing Sci-Fi Assistant Orb (Microphone Ring Mockup) */}
-          <View style={styles.orbOuterRing}>
-            <View style={styles.orbMidRing}>
-              <LinearGradient
-                colors={['#7C3AED', '#EC4899']}
-                style={styles.orbCore}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialCommunityIcons name="lan-connect" size={38} color="#F8FAFC" />
-              </LinearGradient>
-            </View>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons name="layers" size={44} color="#22C55E" />
           </View>
           
-          <Text style={styles.title}>SmartNest</Text>
-          <Text style={styles.subtitle}>Futuristic Home Control Panel</Text>
+          <Text style={styles.title}>4Layers</Text>
+          <Text style={styles.subtitle}>Control Console</Text>
         </View>
 
         {/* Input Form Section */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Initialize Connection</Text>
+          <Text style={styles.formTitle}>Sign In</Text>
 
           <TextInput
-            label="User Identity / Email"
+            label="Username"
             value={username}
             onChangeText={setUsername}
             mode="outlined"
             autoCapitalize="none"
-            textColor="#F8FAFC"
-            activeOutlineColor="#7C3AED"
-            outlineColor="rgba(124, 58, 237, 0.2)"
-            left={<TextInput.Icon icon="account" iconColor="rgba(148, 163, 184, 0.6)" />}
+            textColor="#FFFFFF"
+            activeOutlineColor="#22C55E"
+            outlineColor="#262626"
+            left={<TextInput.Icon icon="account" iconColor="#9CA3AF" />}
             style={styles.input}
           />
 
           <TextInput
-            label="Security Passkey"
+            label="Password"
             value={password}
             onChangeText={setPassword}
             mode="outlined"
             secureTextEntry={!showPassword}
             autoCapitalize="none"
-            textColor="#F8FAFC"
-            activeOutlineColor="#7C3AED"
-            outlineColor="rgba(124, 58, 237, 0.2)"
-            left={<TextInput.Icon icon="shield-lock" iconColor="rgba(148, 163, 184, 0.6)" />}
+            textColor="#FFFFFF"
+            activeOutlineColor="#22C55E"
+            outlineColor="#262626"
+            left={<TextInput.Icon icon="shield-lock" iconColor="#9CA3AF" />}
             right={
               <TextInput.Icon 
                 icon={showPassword ? 'eye-off' : 'eye'} 
-                iconColor="rgba(148, 163, 184, 0.6)"
+                iconColor="#9CA3AF"
                 onPress={() => setShowPassword(!showPassword)}
               />
             }
             style={styles.input}
           />
 
-          {/* Gradient Connect Button */}
+          {/* Simple Clean Green Button */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleLogin}
             disabled={loading}
-            style={styles.gradientBtnWrapper}
+            style={[styles.submitBtn, { opacity: loading ? 0.7 : 1 }]}
           >
-            <LinearGradient
-              colors={['#7C3AED', '#EC4899']}
-              style={styles.gradientBtn}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {loading ? (
-                <View style={styles.loaderRow}>
-                  <Text style={styles.btnText}>Authenticating</Text>
-                  <Text style={styles.pulseText}>...</Text>
-                </View>
-              ) : (
-                <Text style={styles.btnText}>Sync Console</Text>
-              )}
-            </LinearGradient>
+            {loading ? (
+              <Text style={styles.btnText}>Connecting...</Text>
+            ) : (
+              <Text style={styles.btnText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           {/* Create Account Prompt */}
           <View style={styles.registerPrompt}>
-            <Text style={styles.promptText}>New node controller?</Text>
+            <Text style={styles.promptText}>New controller?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={[styles.registerLink, { color: theme.colors.secondary }]}> Register Controller</Text>
+              <Text style={[styles.registerLink, { color: '#22C55E' }]}> Register</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -156,14 +147,14 @@ export default function LoginScreen({ navigation }) {
           visible={showSnackbar}
           onDismiss={() => setShowSnackbar(false)}
           duration={4000}
-          style={{ backgroundColor: theme.colors.errorContainer, borderWidth: 1, borderColor: theme.colors.error }}
+          style={{ backgroundColor: '#7F1D1D', borderWidth: 1, borderColor: '#EF4444' }}
           action={{
             label: 'OK',
-            textColor: theme.colors.onErrorContainer,
+            textColor: '#FCA5A5',
             onPress: () => setShowSnackbar(false),
           }}
         >
-          <Text style={{ color: theme.colors.onErrorContainer, fontWeight: 'bold' }}>{errorMsg}</Text>
+          <Text style={{ color: '#FCA5A5', fontWeight: 'bold' }}>{errorMsg}</Text>
         </Snackbar>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -173,7 +164,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#0D0D0D',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -184,107 +175,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 36,
   },
-  orbOuterRing: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(124, 58, 237, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: '#1A1A1A',
     borderWidth: 1.5,
-    borderColor: 'rgba(124, 58, 237, 0.1)',
-  },
-  orbMidRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(236, 72, 153, 0.08)',
+    borderColor: '#262626',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(236, 72, 153, 0.15)',
-  },
-  orbCore: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#EC4899',
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 40,
-    fontWeight: '900',
-    color: '#F8FAFC',
-    letterSpacing: 1,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 8,
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 6,
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   formCard: {
-    backgroundColor: '#121225',
-    borderRadius: 28,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
     padding: 24,
     borderWidth: 1.5,
-    borderColor: '#22223B',
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 2,
+    borderColor: '#262626',
   },
   formTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#F8FAFC',
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 20,
     letterSpacing: 0.5,
   },
   input: {
     marginBottom: 16,
-    backgroundColor: '#121225',
+    backgroundColor: '#0D0D0D',
   },
-  gradientBtnWrapper: {
+  submitBtn: {
     marginTop: 12,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  gradientBtn: {
+    borderRadius: 8,
+    backgroundColor: '#22C55E',
     paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   btnText: {
-    color: '#F8FAFC',
-    fontWeight: 'bold',
-    fontSize: 16,
-    letterSpacing: 0.8,
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-  },
-  pulseText: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 2,
   },
   registerPrompt: {
     flexDirection: 'row',
@@ -293,11 +241,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   promptText: {
-    color: '#64748B',
+    color: '#9CA3AF',
     fontSize: 14,
   },
   registerLink: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 14,
   },
 });

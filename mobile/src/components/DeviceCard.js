@@ -24,37 +24,10 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
     }
   };
 
-  // Determine neon glow color based on device type
-  const getGlowColor = () => {
-    if (!device.status) return 'transparent';
-    switch (device.type) {
-      case 'light':
-        return theme.colors.primary;   // Neon Purple (#7C3AED)
-      case 'fan':
-        return theme.colors.secondary; // Neon Pink (#EC4899)
-      case 'AC':
-        return '#06B6D4';              // Neon Cyan
-      default:
-        return theme.colors.primary;
-    }
-  };
-
-  // Determine icon color based on active state
-  const getIconColor = () => {
-    if (!device.status) return 'rgba(148, 163, 184, 0.4)'; // Muted slate gray
-    switch (device.type) {
-      case 'light':
-        return '#A78BFA'; // Light Purple neon
-      case 'fan':
-        return '#F472B6'; // Soft Pink neon
-      case 'AC':
-        return '#22D3EE'; // Cool Cyan neon
-      default:
-        return theme.colors.primary;
-    }
-  };
-
-  const glowColor = getGlowColor();
+  const activeColor = '#22C55E';
+  const inactiveColor = '#262626';
+  const textColor = device.status ? '#FFFFFF' : '#9CA3AF';
+  const iconColor = device.status ? '#22C55E' : '#9CA3AF';
 
   return (
     <TouchableOpacity
@@ -63,50 +36,31 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
       style={[
         styles.cardContainer,
         {
-          backgroundColor: device.status ? '#1E1E38' : '#121225',
-          borderColor: device.status ? glowColor : '#22223B',
-          borderWidth: device.status ? 2 : 1.5,
-          // Shadow glow effect when ON
-          shadowColor: glowColor,
-          shadowOpacity: device.status ? 0.6 : 0,
-          shadowRadius: device.status ? 14 : 0,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: device.status ? 8 : 1,
+          borderColor: device.status ? activeColor : inactiveColor,
         }
       ]}
     >
-      {/* Top right corner: Small unobtrusive Delete Button */}
+      {/* Top right corner: Small delete button */}
       <IconButton
         icon="close-circle-outline"
-        iconColor={device.status ? 'rgba(255, 255, 255, 0.3)' : 'rgba(148, 163, 184, 0.3)'}
+        iconColor={device.status ? 'rgba(255, 255, 255, 0.4)' : '#9CA3AF'}
         size={18}
         onPress={() => onDelete(device.id)}
         style={styles.deleteBtn}
       />
 
-      {/* Center Section: Large Glowing Icon */}
-      <View style={[
-        styles.iconContainer,
-        device.status && {
-          backgroundColor: 'rgba(124, 58, 237, 0.1)',
-          shadowColor: glowColor,
-          shadowOpacity: 0.8,
-          shadowRadius: 15,
-        }
-      ]}>
+      {/* Center Section: Clean Icon Wrapper */}
+      <View style={styles.iconContainer}>
         <MaterialCommunityIcons 
           name={getDeviceIcon()} 
-          size={42} 
-          color={getIconColor()} 
+          size={36} 
+          color={iconColor} 
         />
       </View>
 
       {/* Bottom Section: Device Label & Category */}
       <View style={styles.textContainer}>
-        <Text style={[
-          styles.deviceName,
-          { color: device.status ? '#F8FAFC' : '#94A3B8' }
-        ]} numberOfLines={1}>
+        <Text style={[styles.deviceName, { color: textColor }]} numberOfLines={1}>
           {device.name}
         </Text>
         <Text style={styles.deviceType}>
@@ -117,7 +71,7 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
       {/* Active Dot Status */}
       <View style={[
         styles.statusDot,
-        { backgroundColor: device.status ? glowColor : '#374151' }
+        { backgroundColor: device.status ? activeColor : '#374151' }
       ]} />
     </TouchableOpacity>
   );
@@ -127,12 +81,14 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: CARD_SIZE,
     height: CARD_SIZE,
-    borderRadius: 24,
+    borderRadius: 16,
     padding: 16,
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
     position: 'relative',
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1.5,
   },
   deleteBtn: {
     position: 'absolute',
@@ -142,12 +98,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+    backgroundColor: '#0D0D0D',
+    borderWidth: 1,
+    borderColor: '#262626',
   },
   textContainer: {
     alignItems: 'center',
@@ -155,17 +114,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   deviceName: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    letterSpacing: 0.3,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   deviceType: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 9,
+    color: '#9CA3AF',
     marginTop: 2,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   statusDot: {
     width: 6,

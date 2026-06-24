@@ -9,6 +9,7 @@ import { useTheme } from 'react-native-paper';
 
 // Auth Context
 import { AuthContext } from '../context/AuthContext';
+import { registerUnauthorizedHandler } from '../api/client';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -36,7 +37,7 @@ function HomeStackScreen() {
       <HomeStack.Screen 
         name="DevicesHome" 
         component={HomeScreen} 
-        options={{ title: 'SmartNest Devices' }} 
+        options={{ title: '4Layers' }} 
       />
       <HomeStack.Screen 
         name="AddDevice" 
@@ -93,6 +94,11 @@ export default function AppNavigator() {
     };
 
     bootstrapAsync();
+    
+    // Register the 401 interceptor auto-logout callback
+    registerUnauthorizedHandler(() => {
+      dispatch({ type: 'SIGN_OUT' });
+    });
   }, []);
 
   const authContextValue = useMemo(
@@ -113,8 +119,8 @@ export default function AppNavigator() {
   if (state.isLoading) {
     // Spinner screen while loading token status
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0F' }}>
-        <ActivityIndicator size="large" color="#7C3AED" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D' }}>
+        <ActivityIndicator size="large" color="#22C55E" />
       </View>
     );
   }
@@ -146,33 +152,22 @@ export default function AppNavigator() {
                 }
                 return <MaterialCommunityIcons name={iconName} size={size + 2} color={color} />;
               },
-              tabBarActiveTintColor: theme.colors.secondary,
-              tabBarInactiveTintColor: 'rgba(148, 163, 184, 0.4)',
+              tabBarActiveTintColor: theme.colors.primary,
+              tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
               tabBarStyle: {
-                position: 'absolute',
-                bottom: 24,
-                left: 24,
-                right: 24,
-                elevation: 10,
-                backgroundColor: 'rgba(26, 26, 46, 0.95)', // Translucent cards background
-                borderRadius: 32,
-                height: 68,
-                borderTopWidth: 0,
-                borderWidth: 1.5,
-                borderColor: 'rgba(124, 58, 237, 0.3)', // Subtle neon purple outline
-                shadowColor: '#7C3AED', // Neon purple shadow glow
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.4,
-                shadowRadius: 16,
+                backgroundColor: theme.colors.surface,
+                height: 64,
+                borderTopWidth: 1.5,
+                borderTopColor: '#262626',
                 paddingBottom: Platform.OS === 'ios' ? 12 : 8,
                 paddingTop: 8,
               },
               headerStyle: { 
-                backgroundColor: theme.colors.background,
+                backgroundColor: theme.colors.surface,
                 elevation: 0,
                 shadowOpacity: 0,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(124, 58, 237, 0.1)',
+                borderBottomWidth: 1.5,
+                borderBottomColor: '#262626',
               },
               headerTintColor: theme.colors.onSurface,
               headerTitleStyle: { fontWeight: '900', letterSpacing: 0.8 },
