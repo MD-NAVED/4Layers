@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import apiClient from '../api/client';
-import { Layers, ShieldAlert, KeyRound, User } from 'lucide-react';
+import { ShieldAlert, KeyRound, User } from 'lucide-react';
+import logoImg from '../assets/logo.jpg';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -48,7 +49,7 @@ export default function Login({ onLogin }) {
     <div style={styles.container}>
       {/* 4Layers Clean Modern Green Logo */}
       <div style={styles.logoContainer}>
-        <Layers size={40} color="#22C55E" />
+        <img src={logoImg} alt="4Layers Logo" style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} />
       </div>
 
       <h1 style={styles.title}>4Layers</h1>

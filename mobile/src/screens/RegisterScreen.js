@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Image } from 'react-native';
 import { Text, TextInput, Snackbar, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
+import logoImg from '../assets/logo.jpg';
 
 export default function RegisterScreen({ navigation }) {
   const theme = useTheme();
@@ -100,7 +101,7 @@ export default function RegisterScreen({ navigation }) {
         {/* Top Header Section with simple clean logo */}
         <View style={styles.headerSection}>
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="account-plus" size={44} color="#22C55E" />
+            <Image source={logoImg} style={{ width: '100%', height: '100%', borderRadius: 14 }} resizeMode="cover" />
           </View>
           
           <Text style={styles.title}>4Layers</Text>

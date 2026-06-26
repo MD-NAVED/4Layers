@@ -3,8 +3,9 @@ import apiClient from '../api/client';
 import { 
   Power, Cpu, Activity, Plus, Trash2, ShieldCheck, 
   Lightbulb, Fan, AirVent, RefreshCw, Terminal, 
-  LogOut, Layers, LayoutDashboard, History, Settings
+  LogOut, LayoutDashboard, History, Settings
 } from 'lucide-react';
+import logoImg from '../assets/logo.jpg';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, 
   BarChart, Bar, XAxis, YAxis 
@@ -230,7 +231,7 @@ export default function Dashboard({ onLogout }) {
       {/* Sidebar Navigation Panel */}
       <aside style={styles.sidebar}>
         <div style={styles.sidebarBrand}>
-          <Layers size={24} color="#22C55E" />
+          <img src={logoImg} alt="4Layers Logo" style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #262626' }} />
           <span style={styles.sidebarBrandName}>4Layers</span>
         </div>
 
@@ -646,10 +647,12 @@ const styles = {
   },
   sidebarBrand: {
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: '12px',
-    paddingLeft: '8px',
+    justifyContent: 'center',
+    gap: '10px',
     marginBottom: '36px',
+    width: '100%',
   },
   sidebarBrandName: {
     fontSize: '20px',
@@ -657,6 +660,7 @@ const styles = {
     color: '#FFFFFF',
     fontFamily: "'Space Grotesk', sans-serif",
     letterSpacing: '-0.5px',
+    textAlign: 'center',
   },
   sidebarNav: {
     display: 'flex',
