@@ -27,7 +27,7 @@ app.include_router(devices.router)
 # FastAPI Event Handlers
 @app.on_event("startup")
 def startup_event():
-    # Create SQLite database tables if they do not exist
+    # Create database tables if they do not exist
     Base.metadata.create_all(bind=engine)
     print("Database tables initialized.")
 
