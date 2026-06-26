@@ -66,8 +66,8 @@ export default function AddDeviceScreen({ navigation }) {
 
           <Text style={styles.sectionLabel}>Node Category</Text>
           <SegmentedButtons
-            value={type}
-            onValueChange={setType}
+            value={type || 'light'}
+            onValueChange={(val) => setType(val || 'light')}
             theme={{
               colors: {
                 secondaryContainer: '#22C55E', // active background

@@ -213,7 +213,7 @@ export default function HomeScreen({ navigation }) {
 
       {/* Cyberpunk Dialog for Delete Confirmation */}
       <Portal>
-        <Dialog visible={deleteDialogVisible} onDismiss={hideDeleteDialog} style={styles.dialog}>
+        <Dialog visible={!!deleteDialogVisible} onDismiss={hideDeleteDialog} style={styles.dialog}>
           <Dialog.Title style={styles.dialogTitle}>Terminate Node Link?</Dialog.Title>
           <Dialog.Content>
             <Text style={styles.dialogBody}>This will disconnect the hardware node from your smart net. Logs and local database entries will be erased.</Text>

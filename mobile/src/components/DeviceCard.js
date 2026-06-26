@@ -12,9 +12,11 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
   
   // Choose icon based on device type and status
   const getDeviceIcon = () => {
-    switch (device.type) {
+    const type = device?.type || 'light';
+    const status = !!device?.status;
+    switch (type) {
       case 'light':
-        return device.status ? 'lightbulb-on' : 'lightbulb-outline';
+        return status ? 'lightbulb-on' : 'lightbulb-outline';
       case 'fan':
         return 'fan';
       case 'AC':
@@ -26,26 +28,27 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
 
   const activeColor = '#22C55E';
   const inactiveColor = '#262626';
-  const textColor = device.status ? '#FFFFFF' : '#9CA3AF';
-  const iconColor = device.status ? '#22C55E' : '#9CA3AF';
+  const statusOn = !!device?.status;
+  const textColor = statusOn ? '#FFFFFF' : '#9CA3AF';
+  const iconColor = statusOn ? '#22C55E' : '#9CA3AF';
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
-      onPress={() => onToggle(device.id, !device.status)}
+      onPress={() => onToggle && onToggle(device?.id, !statusOn)}
       style={[
         styles.cardContainer,
         {
-          borderColor: device.status ? activeColor : inactiveColor,
+          borderColor: statusOn ? activeColor : inactiveColor,
         }
       ]}
     >
       {/* Top right corner: Small delete button */}
       <IconButton
         icon="close-circle-outline"
-        iconColor={device.status ? 'rgba(255, 255, 255, 0.4)' : '#9CA3AF'}
+        iconColor={statusOn ? 'rgba(255, 255, 255, 0.4)' : '#9CA3AF'}
         size={18}
-        onPress={() => onDelete(device.id)}
+        onPress={() => onDelete && onDelete(device?.id)}
         style={styles.deleteBtn}
       />
 
@@ -61,17 +64,17 @@ export default function DeviceCard({ device, onToggle, onDelete }) {
       {/* Bottom Section: Device Label & Category */}
       <View style={styles.textContainer}>
         <Text style={[styles.deviceName, { color: textColor }]} numberOfLines={1}>
-          {device.name}
+          {device?.name || 'Unknown Node'}
         </Text>
         <Text style={styles.deviceType}>
-          {device.type.toUpperCase()}
+          {(device?.type || 'UNKNOWN').toUpperCase()}
         </Text>
       </View>
 
       {/* Active Dot Status */}
       <View style={[
         styles.statusDot,
-        { backgroundColor: device.status ? activeColor : '#374151' }
+        { backgroundColor: statusOn ? activeColor : '#374151' }
       ]} />
     </TouchableOpacity>
   );

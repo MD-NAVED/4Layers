@@ -147,10 +147,10 @@ export default function HistoryScreen() {
               contentContainerStyle={styles.deviceSlider}
             >
               {devices.map((device) => {
-                const isSelected = selectedDevice && selectedDevice.id === device.id;
+                const isSelected = !!(selectedDevice && selectedDevice.id === device.id);
                 return (
                   <Chip
-                    key={device.id}
+                    key={device?.id}
                     selected={isSelected}
                     onPress={() => handleSelectDevice(device)}
                     style={[
