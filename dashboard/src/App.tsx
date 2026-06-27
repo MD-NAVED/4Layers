@@ -974,6 +974,8 @@ export default function App() {
             {/* MQTT Gateways Monitor */}
             <NodeMonitor 
               nodes={nodes}
+              existingRooms={rooms}
+              onRebootNode={(id) => addAlert(`Gateway node ${id} triggered remote reboot sequence.`, 'info')}
               onToggleNodeStatus={handleToggleNodeStatus}
               onAddCustomNode={handleAddCustomNode}
             />
