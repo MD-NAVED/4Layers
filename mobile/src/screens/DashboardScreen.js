@@ -25,20 +25,78 @@ const TOKENS = {
   textSecondary: "#9CA3AF"
   // Muted Gray
 };
+const MOCK_DEVICES = [
+  { id: '1', name: 'Ambient Ceiling Light', room: 'living', type: 'light', status: true, value: 75 },
+  { id: '2', name: 'Entertainment LED', room: 'living', type: 'light', status: false, value: 30 },
+  { id: '3', name: 'Smart Thermostat', room: 'living', type: 'thermostat', status: true, value: 71 },
+  { id: '4', name: 'Kitchen Pendant Lights', room: 'kitchen', type: 'light', status: true, value: 90 },
+  { id: '5', name: 'Convection Smart Oven', room: 'kitchen', type: 'outlet', status: false, value: 0 },
+  { id: '6', name: 'Nightstand Lamp', room: 'bedroom', type: 'light', status: true, value: 40 },
+  { id: '7', name: 'Climate Control Unit', room: 'bedroom', type: 'thermostat', status: true, value: 68 },
+  { id: '8', name: 'Workstation Monitor Power', room: 'office', type: 'outlet', status: true, value: 120 },
+  { id: '9', name: 'Air Quality Purifier', room: 'office', type: 'outlet', status: false, value: 0 },
+];
+
 export default function DashboardScreen() {
   const [selectedRoom, setSelectedRoom] = useState("living");
   const [isArmed, setIsArmed] = useState(true);
   const [devices, setDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [roomMapping, setRoomMapping] = useState({});
+
+  const fetchRoomsMapping = async () => {
+    try {
+      const homesRes = await apiClient.get('/api/homes');
+      if (homesRes.data && homesRes.data.length > 0) {
+        const homeId = homesRes.data[0].id;
+        const roomsRes = await apiClient.get(`/api/rooms/home/${homeId}`);
+        if (roomsRes.data && roomsRes.data.length > 0) {
+          const mapping = {};
+          roomsRes.data.forEach(r => {
+            const type = r.room_type || r.name.toLowerCase();
+            let mappedType = 'living';
+            if (type.includes('kitchen')) mappedType = 'kitchen';
+            else if (type.includes('bedroom')) mappedType = 'bedroom';
+            else if (type.includes('office') || type.includes('study') || type.includes('balcony')) mappedType = 'office';
+            mapping[r.id] = mappedType;
+          });
+          setRoomMapping(mapping);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch room mapping:", e);
+    }
+  };
+
   const fetchDevices = async (showLoading = false) => {
     if (showLoading) {
       setIsLoading(true);
     }
     try {
-      const data = await apiClient.get("/api/devices");
+      const response = await apiClient.get("/api/devices");
+      const data = response.data;
       if (Array.isArray(data)) {
-        setDevices(data);
+        const formattedList = data.map(d => {
+          let mobileType = 'outlet';
+          if (d.device_type === 'light') mobileType = 'light';
+          else if (d.device_type === 'ac') mobileType = 'thermostat';
+          else if (d.device_type === 'fan') mobileType = 'outlet';
+          else if (d.device_type === 'tv') mobileType = 'outlet';
+          else if (d.device_type === 'plug') mobileType = 'outlet';
+
+          const mappedRoom = roomMapping[d.room_id] || 'living';
+
+          return {
+            id: d.id,
+            name: d.name,
+            room: mappedRoom,
+            type: mobileType,
+            status: d.current_state?.status === 'ON',
+            value: d.current_state?.value !== undefined ? d.current_state.value : (d.device_type === 'ac' ? 72 : 50)
+          };
+        });
+        setDevices(formattedList);
         setHasError(false);
       } else {
         throw new Error("Returned telemetry data is not a valid list of devices");
@@ -47,12 +105,7 @@ export default function DashboardScreen() {
       console.warn("API fetch failed, utilizing sandbox simulation:", error);
       setHasError(true);
       if (devices.length === 0) {
-        try {
-          const fallbackData = await apiClient.get("/api/devices");
-          setDevices(fallbackData);
-        } catch (simError) {
-          console.error("Simulation setup failure:", simError);
-        }
+        setDevices(MOCK_DEVICES);
       }
     } finally {
       if (showLoading) {
@@ -60,41 +113,60 @@ export default function DashboardScreen() {
       }
     }
   };
+
   useEffect(() => {
-    fetchDevices(true);
+    fetchRoomsMapping();
+  }, []);
+
+  useEffect(() => {
+    fetchDevices(devices.length === 0);
     const intervalId = setInterval(() => {
       fetchDevices(false);
-    }, 1e4);
+    }, 10000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [roomMapping]);
+
   const handleToggleDevice = async (id) => {
     const target = devices.find((d) => d.id === id);
     if (!target) return;
     const nextStatus = !target.status;
+    
     setDevices((prev) => prev.map((d) => d.id === id ? { ...d, status: nextStatus } : d));
+    
     try {
-      await apiClient.post(`/api/devices/${id}/control`, { status: nextStatus });
+      await apiClient.post(`/api/devices/${id}/control`, {
+        state: { status: nextStatus ? 'ON' : 'OFF' }
+      });
       fetchDevices(false);
     } catch (err) {
       console.warn("Failed to sync toggle with server MQTT:", err);
       setDevices((prev) => prev.map((d) => d.id === id ? { ...d, status: !nextStatus } : d));
     }
   };
+
   const handleAdjustValue = async (id, step) => {
     const target = devices.find((d) => d.id === id);
     if (!target) return;
     const maxVal = target.type === "thermostat" ? 90 : 100;
     const minVal = target.type === "thermostat" ? 60 : 0;
     const nextVal = Math.max(minVal, Math.min(maxVal, target.value + step));
+    
     setDevices((prev) => prev.map((d) => d.id === id ? { ...d, value: nextVal } : d));
+    
     try {
-      await apiClient.post(`/api/devices/${id}/control`, { value: nextVal });
+      await apiClient.post(`/api/devices/${id}/control`, {
+        state: { 
+          status: target.status ? 'ON' : 'OFF',
+          value: nextVal 
+        }
+      });
       fetchDevices(false);
     } catch (err) {
       console.warn("Failed to sync adjusted value with server:", err);
       setDevices((prev) => prev.map((d) => d.id === id ? { ...d, value: target.value } : d));
     }
   };
+
   const filteredDevices = devices.filter((device) => device.room === selectedRoom);
   const isSecurityArmed = !!isArmed;
   const ROOM_TABS = [
