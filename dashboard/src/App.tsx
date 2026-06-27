@@ -429,6 +429,39 @@ export default function App() {
     }
   };
 
+  // Delete Device API Hook
+  const handleDeleteDevice = async (deviceId: string) => {
+    if (!token) return;
+    const deviceToDelete = devices.find(d => d.id === deviceId);
+    if (!deviceToDelete) return;
+
+    // Optimistically update locally
+    const updatedList = devices.filter(d => d.id !== deviceId);
+    setDevices(updatedList);
+    devicesRef.current = updatedList;
+
+    try {
+      const response = await fetch(`${backendUrl}/api/devices/${deviceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Handshake deletion failed');
+
+      addAlert(
+        `Removed Device: ${deviceToDelete.name} was unregistered from cluster node ${deviceToDelete.nodeId}.`,
+        'warning',
+        deviceToDelete.nodeId
+      );
+      fetchDevices(token);
+    } catch (err) {
+      console.error('[App] Device deletion failed:', err);
+      fetchDevices(token);
+    }
+  };
+
   const handleCreateDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !newDevName || !homeId) return;
@@ -1001,6 +1034,7 @@ export default function App() {
                     device={device}
                     nodeStatus={nodeStatus}
                     onUpdateDevice={handleUpdateDevice}
+                    onDeleteDevice={handleDeleteDevice}
                   />
                 );
               })

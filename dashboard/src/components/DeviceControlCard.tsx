@@ -16,7 +16,8 @@ import {
   Compass, 
   Wind,
   ShieldAlert,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -24,10 +25,11 @@ interface DeviceControlCardProps {
   key?: string | number;
   device: Device;
   onUpdateDevice: (updated: Device) => void;
+  onDeleteDevice?: (deviceId: string) => void;
   nodeStatus?: 'online' | 'offline';
 }
 
-export default function DeviceControlCard({ device, onUpdateDevice, nodeStatus = 'online' }: DeviceControlCardProps) {
+export default function DeviceControlCard({ device, onUpdateDevice, onDeleteDevice, nodeStatus = 'online' }: DeviceControlCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const isOffline = nodeStatus === 'offline';
@@ -112,25 +114,43 @@ export default function DeviceControlCard({ device, onUpdateDevice, nodeStatus =
           </h4>
         </div>
 
-        {/* Dynamic Power Switch */}
-        <button
-          id={`device-toggle-${device.id}`}
-          onClick={handleToggle}
-          disabled={isOffline || isUpdating}
-          className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-all ${
-            isOffline 
-              ? 'bg-brand-dark border-brand-border text-gray-600 cursor-not-allowed'
-              : device.status 
-                ? 'bg-brand-green border-brand-green text-brand-dark shadow-[0_0_10px_rgba(34,197,94,0.25)] hover:scale-105' 
-                : 'bg-brand-dark border-brand-border text-gray-400 hover:text-white hover:border-brand-green/40 hover:bg-brand-dark/80'
-          }`}
-        >
-          {isUpdating ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-dark" />
-          ) : (
-            <Power className="h-4 w-4" />
+        {/* Control Actions */}
+        <div className="flex items-center gap-1.5">
+          {onDeleteDevice && (
+            <button
+              id={`device-delete-${device.id}`}
+              onClick={() => {
+                if (confirm(`Are you sure you want to remove "${device.name}"?`)) {
+                  onDeleteDevice(device.id);
+                }
+              }}
+              className="h-8 w-8 rounded-lg flex items-center justify-center border border-brand-border text-gray-500 hover:text-red-400 hover:border-red-900/50 hover:bg-red-950/20 transition-all"
+              title="Remove Appliance"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           )}
-        </button>
+
+          {/* Dynamic Power Switch */}
+          <button
+            id={`device-toggle-${device.id}`}
+            onClick={handleToggle}
+            disabled={isOffline || isUpdating}
+            className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-all ${
+              isOffline 
+                ? 'bg-brand-dark border-brand-border text-gray-600 cursor-not-allowed'
+                : device.status 
+                  ? 'bg-brand-green border-brand-green text-brand-dark shadow-[0_0_10px_rgba(34,197,94,0.25)] hover:scale-105' 
+                  : 'bg-brand-dark border-brand-border text-gray-400 hover:text-white hover:border-brand-green/40 hover:bg-brand-dark/80'
+            }`}
+          >
+            {isUpdating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-dark" />
+            ) : (
+              <Power className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Primary Icon Container */}
