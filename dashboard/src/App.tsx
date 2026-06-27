@@ -44,6 +44,7 @@ import BluetoothScanner from './components/BluetoothScanner';
 import ScheduleManager from './components/ScheduleManager';
 import NodeMonitor from './components/NodeMonitor';
 import Login from './components/Login';
+import logoImg from './assets/logo.jpg';
 
 export default function App() {
   // Authentication state
