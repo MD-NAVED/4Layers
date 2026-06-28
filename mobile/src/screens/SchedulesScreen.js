@@ -176,7 +176,7 @@ export default function SchedulesScreen() {
 
   const getDeviceName = (deviceId) => {
     const dev = devices.find(d => d.id === deviceId);
-    return dev ? dev.name : 'Unknown Appliance';
+    return dev ? dev.name : 'Unknown Device';
   };
 
   const toggleDaySelection = (dayKey) => {

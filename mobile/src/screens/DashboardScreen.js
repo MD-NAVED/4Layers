@@ -35,6 +35,7 @@ export default function DashboardScreen({ navigation }) {
   const [roomMapping, setRoomMapping] = useState({});
   const [dbRooms, setDbRooms] = useState([]);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [username, setUsername] = useState("User");
 
   const fetchRoomsMapping = async () => {
     try {
@@ -64,6 +65,17 @@ export default function DashboardScreen({ navigation }) {
       setUnreadAlertsCount(res.data.length);
     } catch (e) {
       console.warn("Failed to fetch unread alerts count:", e);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const res = await apiClient.get('/api/users/me');
+      if (res.data && res.data.username) {
+        setUsername(res.data.username);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch user profile name:", e);
     }
   };
 
@@ -110,6 +122,7 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     fetchRoomsMapping();
     fetchUnreadAlertsCount();
+    fetchProfile();
   }, []);
 
   useEffect(() => {
@@ -126,6 +139,7 @@ export default function DashboardScreen({ navigation }) {
       fetchRoomsMapping();
       fetchDevices(true);
       fetchUnreadAlertsCount();
+      fetchProfile();
     });
     return unsubscribe;
   }, [navigation, roomMapping]);
@@ -209,8 +223,7 @@ export default function DashboardScreen({ navigation }) {
   }
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSubtitle}>SYSTEM SECURITY ARMED</Text>
-          <Text style={styles.headerTitle}>SmartNest Control</Text>
+          <Text style={styles.headerTitle}>Welcome, {username}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity 
@@ -229,7 +242,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.activeBadge}>
             <View style={styles.activeDot} />
             <Text style={styles.activeBadgeText}>
-              {devices.filter((d) => !!d.status).length} ACTIVE
+              {devices.filter((d) => d.status).length} ON
             </Text>
           </View>
         </View>
@@ -237,144 +250,99 @@ export default function DashboardScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        {
-    /* Bento Widget 1: Overall Efficiency Card */
-  }
-        <View style={styles.card}>
-          <View style={styles.efficiencyHeader}>
-            <View>
-              <Text style={styles.cardSubtitle}>OVERALL EFFICIENCY</Text>
-              <Text style={styles.cardTitle}>94.2% <Text style={styles.trendText}>(+4.1%)</Text></Text>
-            </View>
-            <View style={styles.efficiencyIndicatorRing}>
-              <View style={styles.circularIndicator}>
-                <Text style={styles.circularText}>94%</Text>
-              </View>
-            </View>
+        {/* Real Stats Card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statColumn}>
+            <Text style={styles.statNumber}>{devices.length}</Text>
+            <Text style={styles.statLabel}>Total Devices</Text>
           </View>
-
-          {
-    /* Progress Indicators */
-  }
-          <View style={styles.progressContainer}>
-            <View style={styles.progressRow}>
-              <View style={styles.progressLabelRow}>
-                <Text style={styles.progressLabel}>Solar Coverage</Text>
-                <Text style={styles.progressValue}>82%</Text>
-              </View>
-              <View style={styles.progressBarTrack}>
-                <View style={[styles.progressBarFill, { width: "82%" }]} />
-              </View>
-            </View>
-
-            <View style={styles.progressRow}>
-              <View style={styles.progressLabelRow}>
-                <Text style={styles.progressLabel}>Battery Reserves</Text>
-                <Text style={styles.progressValue}>92%</Text>
-              </View>
-              <View style={styles.progressBarTrack}>
-                <View style={[styles.progressBarFill, { width: "92%" }]} />
-              </View>
-            </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statColumn}>
+            <Text style={styles.statNumber}>{devices.filter(d => d.status).length}</Text>
+            <Text style={styles.statLabel}>Devices ON</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statColumn}>
+            <Text style={styles.statNumber}>{dbRooms.length}</Text>
+            <Text style={styles.statLabel}>Rooms</Text>
           </View>
         </View>
 
-        {
-    /* Bento Widget 2: Perimeter Security */
-  }
-        <View style={[styles.card, isSecurityArmed && styles.cardActiveBorder]}>
-          <View style={styles.securityRow}>
-            <View style={styles.securityTextGroup}>
-              <Text style={styles.cardTitle}>House Perimeter Security</Text>
-              <Text style={styles.cardSubtitle}>Lockdowns armed. Video feeds streaming</Text>
-            </View>
-            <TouchableOpacity
-    activeOpacity={0.8}
-    style={[
-      styles.switchTrack,
-      isSecurityArmed && styles.switchTrackActive
-    ]}
-    onPress={() => setIsArmed(!isArmed)}
-    accessibilityRole="switch"
-    accessibilityState={isSecurityArmed ? { checked: true } : { checked: false }}
-    accessibilityLabel="Perimeter Lockdowns State"
-  >
-              <View style={[
-    styles.switchThumb,
-    isSecurityArmed && styles.switchThumbActive
-  ]} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {
-    /* Room Tabs Row */
-  }
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>ROOM VIEWPORTS</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Rooms")} style={styles.manageLink}>
-            <MaterialCommunityIcons name="cog" size={14} color={TOKENS.accent} />
-            <Text style={styles.manageLinkText}>Manage</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.tabsRow}>
-          {ROOM_TABS.map((tab) => {
-    const isActive = selectedRoom === tab.id;
-    return <TouchableOpacity
-      key={tab.id}
-      activeOpacity={0.7}
-      onPress={() => setSelectedRoom(tab.id)}
-      style={[
-        styles.tabChip,
-        !!isActive && styles.tabChipActive
-      ]}
-      accessibilityRole="tab"
-      accessibilityState={isActive ? { selected: true } : void 0}
-      accessibilityLabel={`${tab.label} view filter`}
-    >
-                <Text style={[
-      styles.tabChipText,
-      !!isActive && styles.tabChipTextActive
-    ]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>;
-  })}
-        </View>
-
-        {/* Master Switch bulk control */}
+        {/* Real Master Switch Card */}
         {filteredDevices.length > 0 && (
-          <View style={styles.masterSwitchCard}>
-            <View style={styles.masterSwitchInfo}>
-              <MaterialCommunityIcons name="power" size={22} color={TOKENS.accent} />
-              <View style={styles.masterSwitchTextGroup}>
-                <Text style={styles.masterSwitchTitle}>Master Switch</Text>
-                <Text style={styles.masterSwitchSubtitle}>
+          <View style={[styles.card, filteredDevices.some(d => d.status) && styles.cardActiveBorder]}>
+            <View style={styles.securityRow}>
+              <View style={styles.securityTextGroup}>
+                <Text style={styles.cardTitle}>Master Switch</Text>
+                <Text style={styles.cardSubtitle}>
                   Turn all {selectedRoom === "all" ? "home" : "room"} devices ON or OFF
                 </Text>
               </View>
-            </View>
-            <View style={styles.masterSwitchActions}>
               <TouchableOpacity
-                style={[styles.bulkButton, styles.bulkButtonOff]}
-                onPress={() => handleBulkControl(false)}
+                activeOpacity={0.8}
+                style={[
+                  styles.switchTrack,
+                  filteredDevices.some(d => d.status) && styles.switchTrackActive
+                ]}
+                onPress={() => handleBulkControl(!filteredDevices.some(d => d.status))}
+                accessibilityRole="switch"
+                accessibilityState={filteredDevices.some(d => d.status) ? { checked: true } : { checked: false }}
+                accessibilityLabel="Master Switch State"
               >
-                <Text style={styles.bulkButtonTextOff}>ALL OFF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.bulkButton, styles.bulkButtonOn]}
-                onPress={() => handleBulkControl(true)}
-              >
-                <Text style={styles.bulkButtonTextOn}>ALL ON</Text>
+                <View style={[
+                  styles.switchThumb,
+                  filteredDevices.some(d => d.status) && styles.switchThumbActive
+                ]} />
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {
-    /* Connected Devices Grid with Fallbacks */
-  }
-        <Text style={styles.sectionHeader}>CONNECTED HARDWARE</Text>
+        {/* Room Tabs Row inside horizontal ScrollView */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeader}>Rooms</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Rooms")} style={styles.manageLink}>
+            <MaterialCommunityIcons name="cog" size={14} color={TOKENS.accent} />
+            <Text style={styles.manageLinkText}>Manage</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.tabsScrollContainer}
+          style={styles.tabsScrollView}
+        >
+          {ROOM_TABS.map((tab) => {
+            const isActive = selectedRoom === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                activeOpacity={0.7}
+                onPress={() => setSelectedRoom(tab.id)}
+                style={[
+                  styles.tabChip,
+                  !!isActive && styles.tabChipActive
+                ]}
+                accessibilityRole="tab"
+                accessibilityState={isActive ? { selected: true } : void 0}
+                accessibilityLabel={`${tab.label} view filter`}
+              >
+                <Text 
+                  numberOfLines={1}
+                  style={[
+                    styles.tabChipText,
+                    !!isActive && styles.tabChipTextActive
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <Text style={styles.sectionHeader}>Devices</Text>
         
         {isLoading ? <View style={styles.statusBox}>
             <View style={styles.activeDot} />
@@ -383,7 +351,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statusTitle}>CONNECTION FALLBACK ACTIVE</Text>
             <Text style={styles.statusSubtitle}>FastAPI server is sleeping. Local telemetry simulation running.</Text>
           </View> : filteredDevices.length === 0 ? <View style={styles.statusBox}>
-            <Text style={styles.statusText}>No devices detected in this room viewport.</Text>
+            <Text style={styles.statusText}>No devices in this room yet</Text>
           </View> : <View style={styles.gridContainer}>
             {filteredDevices.map((device) => {
     const isEnabled = !!device.status;
@@ -673,29 +641,33 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 20 }],
     backgroundColor: TOKENS.accent
   },
-  tabsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 8
+  tabsScrollView: {
+    marginVertical: 12
+  },
+  tabsScrollContainer: {
+    paddingRight: 16,
+    gap: 8,
+    alignItems: "center",
+    height: 40
   },
   tabChip: {
-    flex: 1,
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
     backgroundColor: TOKENS.cardBg,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: TOKENS.border
+    borderWidth: 1.5,
+    borderColor: TOKENS.border,
+    justifyContent: "center",
+    alignItems: "center"
   },
   tabChipActive: {
-    backgroundColor: TOKENS.bg,
+    backgroundColor: "rgba(34, 197, 94, 0.15)",
     borderColor: TOKENS.accent
   },
   tabChipText: {
-    fontSize: 11,
-    fontFamily: "System",
-    fontWeight: "700",
-    color: TOKENS.textSecondary
+    color: TOKENS.textSecondary,
+    fontSize: 12,
+    fontWeight: "700"
   },
   tabChipTextActive: {
     color: TOKENS.accent
@@ -974,5 +946,40 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 9,
     fontWeight: "900"
+  },
+  statsCard: {
+    flexDirection: "row",
+    backgroundColor: TOKENS.cardBg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginTop: 16,
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  statColumn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: TOKENS.accent,
+    marginBottom: 4
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: TOKENS.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: TOKENS.border
   }
 });

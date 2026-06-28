@@ -50,7 +50,7 @@ free-tier sleep abhi koi issue nahi). Har feature "kaam karta dikhe" — bas itn
 - [x] **P7** Deploy: **APK → EAS build only** (dashboard deploy NAHI — sirf reference hai)
 
 ### PENDING (in order)
-- None. All integration modules completed successfully!
+- [ ] **P8** UI Polish — room-chip wrapping fix + jargon→normal wording + fake data (solar/battery/efficiency) ko real counts + real Master Switch banao
 
 ---
 
@@ -245,8 +245,49 @@ MOBILE (mobile/) -> Android APK via EAS:
 
 ---
 
+# 🚀 PROMPT P8 — UI Polish (premium look + normal wording + REAL data)
+
+```
+TASK: Polish the mobile app UI. Keep the existing premium dark look (background #0D0D0D, accent green #22C55E). Use SettingsScreen.js as the reference for clean styling. Do NOT break any functionality. Read each screen file BEFORE editing.
+
+Three goals: (A) fix a layout bug, (B) replace techy jargon with normal plain English, (C) replace fake/mock data with REAL data from the app's already-loaded devices/rooms.
+
+=== A. FIX: Room chips layout (DashboardScreen) ===
+The room selector chips ("All / Living Room / Master Bedroom / Kitchen / Balcony") currently WRAP to two lines and have uneven heights (e.g. "Master Bedroom" breaks). Fix:
+- Put the chips in a horizontal ScrollView (horizontal, showsHorizontalScrollIndicator={false}).
+- Each chip: single line only (numberOfLines={1}), fixed height, equal vertical + horizontal padding, rounded. NO wrapping. Selected chip = green fill/border, others = dark card.
+
+=== B. REPLACE jargon with NORMAL words (whole app) ===
+Apply these everywhere they appear (labels, section headers, event messages):
+- "ROOM VIEWPORTS"        -> "Rooms"
+- "CONNECTED HARDWARE"    -> "Devices"
+- "No devices detected in this room viewport" -> "No devices in this room yet"
+- "SELECT APPLIANCE HUB"  -> "Select Device"
+- "TRANSMIT TRIGGER" + "Signal sent: Toggled from OFF -> ON" -> "<DeviceName> turned ON"
+- "...Toggled from ON -> OFF" -> "<DeviceName> turned OFF"
+- "NODE REGISTERED" + "Node handshake complete. Default state: OFF" -> "Device added"
+- "0 ACTIVE" pill         -> "<n> ON"  (n = number of devices currently ON)
+- Remove the "SYSTEM SECURITY ARMED" overline; make the title a simple "Welcome, <username>" greeting or the home name + "Dashboard".
+Keep tone simple and human. No sci-fi / tech jargon anywhere a normal user sees.
+
+=== C. REPLACE fake data with REAL data (DashboardScreen) ===
+1. Remove the fake cards "Overall Efficiency 94.2% (+4.1%)", "Solar Coverage", "Battery Reserves".
+   Replace with ONE clean summary card showing 3 REAL stats: Total Devices | Devices ON | Rooms — computed from the already-fetched data (devices.length, devices.filter(on).length, rooms.length). Keep it premium (big numbers, green accents).
+2. The big toggle labeled "House Perimeter Security / LOCKDOWNS ARMED. VIDEO FEEDS STREAMING" is FAKE. Convert it into a real MASTER SWITCH: label "Master Switch", subtitle "Turn all devices on/off". Wire it to turn ALL devices in the current room (or all rooms when "All" is selected) on/off via the existing device-control API. Reflect the real on/off state.
+Do NOT invent any data the backend does not provide.
+
+=== Polish details ===
+- Consistent card padding (~16px) and spacing between sections.
+- No text clipped or wrapping awkwardly on normal phone width.
+- Match SettingsScreen's clean style across Home and Event History.
+
+Show me the final files you changed.
+```
+
+---
+
 ## 🔁 Suggested order to paste
-P0-A → P0-B → P1 → P2 → P3 → P4 → P5 → P6 → P7
+P0-A → P0-B → P1 → P2 → P3 → P4 → P5 → P6 → P7 → **P8 (UI polish, last)**
 
 Har prompt ke baad Antigravity ko complete hone do (interrupt mat karo), file save hone do, phir agla paste karo.
 Jo task ho jaaye uske aage `[ ]` ko `[x]` kar dena upar tracker mein.

@@ -81,25 +81,25 @@ export default function HistoryScreen() {
     switch (changeType) {
       case 'device_created':
         return {
-          label: 'NODE REGISTERED',
+          label: 'Device added',
           icon: 'plus-circle-outline',
           color: '#22C55E', // green
         };
       case 'command_sent':
         return {
-          label: 'TRANSMIT TRIGGER',
+          label: 'Command Sent',
           icon: 'radiobox-marked',
           color: '#9CA3AF', // gray
         };
       case 'status_confirmed':
         return {
-          label: 'SYNC CONFIRMED',
+          label: 'Sync Confirmed',
           icon: 'checkbox-marked-circle-outline',
           color: '#22C55E', // green
         };
       default:
         return {
-          label: 'NODE TELEMETRY',
+          label: 'Telemetry Update',
           icon: 'server-network',
           color: '#9CA3AF',
         };
@@ -150,7 +150,7 @@ export default function HistoryScreen() {
         <View style={{ flex: 1 }}>
           {/* Header Horizontal Device Filter */}
           <View style={styles.headerSelection}>
-            <Text style={styles.selectionLabel}>Select Appliance Hub</Text>
+            <Text style={styles.selectionLabel}>Select Device</Text>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -229,25 +229,18 @@ export default function HistoryScreen() {
                         </View>
                         
                         {item.change_type === 'device_created' && (
-                          <Text style={styles.eventDesc}>Node handshake complete. Default state: <Text style={styles.offStateText}>OFF</Text></Text>
+                          <Text style={styles.eventDesc}>Device added. Default state: <Text style={styles.offStateText}>OFF</Text></Text>
                         )}
 
                         {item.change_type === 'command_sent' && (
                           <Text style={styles.eventDesc}>
-                            Signal sent: Toggled from{' '}
-                            <Text style={prevStateStr === 'ON' ? styles.onStateText : styles.offStateText}>
-                              {prevStateStr}
-                            </Text>{' '}
-                            →{' '}
-                            <Text style={newStateStr === 'ON' ? styles.onStateText : styles.offStateText}>
-                              {newStateStr}
-                            </Text>
+                            {selectedDevice?.name || 'Device'} turned <Text style={newStateStr === 'ON' ? styles.onStateText : styles.offStateText}>{newStateStr}</Text>
                           </Text>
                         )}
 
                         {item.change_type === 'status_confirmed' && (
                           <Text style={styles.eventDesc}>
-                            Node confirmation packet received. Confirmed state: <Text style={newStateStr === 'ON' ? styles.onStateText : styles.offStateText}>{newStateStr}</Text>
+                            State confirmed: <Text style={newStateStr === 'ON' ? styles.onStateText : styles.offStateText}>{newStateStr}</Text>
                           </Text>
                         )}
                       </Card.Content>
