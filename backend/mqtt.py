@@ -3,6 +3,7 @@ import json
 import logging
 import random
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 import paho.mqtt.client as mqtt
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
@@ -16,8 +17,10 @@ logger = logging.getLogger("MQTT")
 MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.emqx.io")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_KEEPALIVE = int(os.getenv("MQTT_KEEPALIVE", "60"))
-# Append a random integer suffix to make the client ID unique on the public broker
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"smartnest_backend_{random.randint(10000, 99999)}")
+
+# Thread pool for non-blocking MQTT publishing
+publish_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="mqtt_publisher")
 
 # Initialize global MQTT client
 client = mqtt.Client(client_id=MQTT_CLIENT_ID)
@@ -47,33 +50,63 @@ def on_message(client, userdata, msg):
         if len(parts) == 4 and parts[0] == "home" and parts[1] == "device" and parts[3] == "status":
             node_id = parts[2]
             
-            # Parse payload as JSON
+            # 1. Strict JSON payload validation
             payload_str = msg.payload.decode("utf-8").strip()
             try:
                 state_data = json.loads(payload_str)
-            except json.JSONDecodeError:
-                logger.error("Invalid JSON payload received on node %s: %s", node_id, payload_str)
+            except json.JSONDecodeError as err:
+                logger.error("Invalid JSON payload dropped on node %s: %s (Error: %s)", node_id, payload_str, err)
                 return
             
             if not isinstance(state_data, dict):
-                logger.error("Payload must be a JSON object: %s", payload_str)
+                logger.error("Dropped payload on node %s; must be a JSON object: %s", node_id, payload_str)
                 return
+
+            # Target node determination
+            target_node_id = node_id
+            if "channel" in state_data:
+                target_node_id = f"{node_id}_{state_data['channel']}"
 
             # Update database in callback thread
             db: Session = SessionLocal()
             try:
-                # Query device by node_id, checking for channel indices
-                target_node_id = node_id
-                if isinstance(state_data, dict) and "channel" in state_data:
-                    target_node_id = f"{node_id}_{state_data['channel']}"
-
                 device = db.query(models.Device).filter(models.Device.node_id == target_node_id).first()
                 
                 if device:
+                    device.last_seen = datetime.utcnow()
+                    
+                    # 2. LWT Handling: check if offline LWT arrived
+                    if state_data.get("status") == "OFFLINE":
+                        device.is_online = False
+                        device.updated_at = datetime.utcnow()
+                        db.add(device)
+
+                        # Log history
+                        history_entry = models.DeviceHistory(
+                            device_id=device.id,
+                            change_type="status_confirmed",
+                            previous_state=device.current_state or {},
+                            new_state={"status": "OFFLINE"}
+                        )
+                        db.add(history_entry)
+
+                        # Create alert
+                        alert_entry = models.Alert(
+                            user_id=device.home.owner_id,
+                            device_id=device.id,
+                            type="device_offline",
+                            message=f"Smart Nest Device '{device.name}' is now OFFLINE.",
+                            is_read=False
+                        )
+                        db.add(alert_entry)
+                        db.commit()
+                        logger.info("LWT Offline handled: Device node %s marked offline.", target_node_id)
+                        return
+
+                    # Normal status confirmation handling
                     previous_state = device.current_state or {}
                     was_offline = not device.is_online
                     
-                    # Extract channel-independent state
                     clean_state = {
                         "status": state_data.get("status", "OFF")
                     }
@@ -82,17 +115,14 @@ def on_message(client, userdata, msg):
                     elif "speed" in state_data:
                         clean_state["value"] = state_data["speed"]
 
-                    # Merge new state data into current_state
                     new_state = {**previous_state, **clean_state}
                     
-                    # If state changed, update database and log history
-                    if previous_state != new_state:
+                    if previous_state != new_state or was_offline:
                         device.current_state = new_state
                         device.is_online = True
                         device.updated_at = datetime.utcnow()
                         db.add(device)
                         
-                        # Log history as status_confirmed
                         history_entry = models.DeviceHistory(
                             device_id=device.id,
                             change_type="status_confirmed",
@@ -112,26 +142,11 @@ def on_message(client, userdata, msg):
                             db.add(alert_entry)
 
                         db.commit()
-                        logger.info("Device node %s status confirmed via MQTT: %s", node_id, state_data)
+                        logger.info("Device node %s status updated via MQTT: %s", target_node_id, state_data)
                     else:
-                        # Keep online status active
-                        if was_offline:
-                            device.is_online = True
-                            device.updated_at = datetime.utcnow()
-                            db.add(device)
-
-                            alert_entry = models.Alert(
-                                user_id=device.home.owner_id,
-                                device_id=device.id,
-                                type="device_online",
-                                message=f"Smart Nest Device '{device.name}' is now ONLINE and connected to Gateway.",
-                                is_read=False
-                            )
-                            db.add(alert_entry)
-                            db.commit()
-                        logger.info("Device node %s state is already up-to-date.", node_id)
+                        logger.info("Device node %s state is already up-to-date.", target_node_id)
                 else:
-                    logger.warning("Device node %s not found in database.", node_id)
+                    logger.warning("Device node %s not found in database.", target_node_id)
             except Exception as e:
                 db.rollback()
                 logger.exception("Error processing MQTT message in DB: %s", e)
@@ -160,19 +175,23 @@ def stop_mqtt():
     client.disconnect()
     logger.info("MQTT loop stopped and disconnected.")
 
+def _blocking_publish(topic: str, payload: str):
+    """Executes the blocking publish inside the thread pool executor."""
+    try:
+        info = client.publish(topic, payload, qos=1)
+        info.wait_for_publish(timeout=2.0)
+        logger.info("MQTT published to %s: %s", topic, payload)
+    except Exception as e:
+        logger.error("Failed to publish to %s: %s", topic, e)
+
 def publish_control_message(node_id: str, state: dict):
     """
     Publish a control message to control a device.
-    Topic: home/device/{node_id}/control
-    Payload: JSON string of state updates (e.g. {"status": "ON"})
+    Runs asynchronously inside a thread pool to avoid blocking FastAPI's async loop.
     """
     topic = f"home/device/{node_id}/control"
     payload = json.dumps(state)
-    
     try:
-        info = client.publish(topic, payload, qos=1)
-        # wait_for_publish ensures it's sent or errors
-        info.wait_for_publish(timeout=2.0)
-        logger.info("Published control message to %s: %s", topic, payload)
+        publish_executor.submit(_blocking_publish, topic, payload)
     except Exception as e:
-        logger.error("Failed to publish control message to %s: %s", topic, e)
+        logger.error("Failed to enqueue MQTT publish to %s: %s", topic, e)

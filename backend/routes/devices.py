@@ -292,3 +292,73 @@ def bulk_control_devices(
     db.commit()
     return {"detail": f"Bulk control commands sent to {len(devices)} devices."}
 
+
+@router.post("/provision", status_code=status.HTTP_200_OK)
+def provision_device(
+    provision_data: schemas.DeviceProvision,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a device with this MAC address already exists.
+    If yes, returns its UUID.
+    If no, registers a new device node under a default Home and Room for the user.
+    """
+    mac = provision_data.mac_address.strip()
+    device = db.query(models.Device).filter(models.Device.mac_address == mac).first()
+    if device:
+        return {"id": device.id}
+
+    # Resolve or create home for current user
+    home = db.query(models.Home).filter(models.Home.owner_id == current_user.id).first()
+    if not home:
+        home = models.Home(
+            name="SmartNest Home",
+            owner_id=current_user.id
+        )
+        db.add(home)
+        db.commit()
+        db.refresh(home)
+
+    # Resolve or create room
+    room = db.query(models.Room).filter(models.Room.home_id == home.id).first()
+    if not room:
+        room = models.Room(
+            name="Control Room",
+            room_type="living_room",
+            home_id=home.id
+        )
+        db.add(room)
+        db.commit()
+        db.refresh(room)
+
+    # Create new device
+    import uuid
+    device_id = uuid.uuid4()
+    new_device = models.Device(
+        id=device_id,
+        name=f"Smart {provision_data.type.capitalize()}",
+        device_type=provision_data.type.lower(),
+        node_id=mac,  # Using MAC address as unique node_id
+        mac_address=mac,
+        home_id=home.id,
+        room_id=room.id,
+        is_online=False,
+        current_state={}
+    )
+    db.add(new_device)
+    db.commit()
+    db.refresh(new_device)
+
+    # Log history
+    history_entry = models.DeviceHistory(
+        device_id=new_device.id,
+        change_type="device_created",
+        previous_state=None,
+        new_state={}
+    )
+    db.add(history_entry)
+    db.commit()
+
+    return {"id": new_device.id}
+

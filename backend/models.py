@@ -52,10 +52,12 @@ class Device(Base):
     room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     home_id = Column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False)
     node_id = Column(String, unique=True, index=True, nullable=False)  # Unique ESP32 Chip ID String
+    mac_address = Column(String, unique=True, index=True, nullable=True)  # Unique hardware MAC address
     name = Column(String, nullable=False)
     device_type = Column(String, nullable=False)  # e.g., "light", "fan", "AC"
     is_online = Column(Boolean, default=False, server_default=text("false"), nullable=False)
     current_state = Column(JSONB, default={}, server_default=text("'{}'::jsonb"), nullable=False)
+    last_seen = Column(DateTime, default=datetime.datetime.utcnow, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, server_default=text("timezone('utc', now())"), nullable=False)
 
     # Relationships

@@ -84,15 +84,21 @@ class DeviceResponse(DeviceBase):
     room_id: Optional[UUID] = None
     home_id: UUID
     node_id: str
+    mac_address: Optional[str] = None
     name: str
     device_type: str
     is_online: bool
     current_state: Dict[str, Any] = {}
+    last_seen: Optional[datetime.datetime] = None
     updated_at: datetime.datetime
 
     model_config = {
         "from_attributes": True
     }
+
+class DeviceProvision(BaseModel):
+    mac_address: str = Field(..., min_length=1, description="MAC address of the physical hardware")
+    type: str = Field(..., description="Device type, e.g. LIGHT, FAN, AC")
 
 class DeviceControl(BaseModel):
     state: Dict[str, Any] = Field(..., description="JSON representation of desired state updates (e.g. {'status': 'ON'})")

@@ -23,8 +23,9 @@ const TOKENS = {
   // Muted Gray
   textPrimary: "#FFFFFF",
   // White
-  textSecondary: "#9CA3AF"
+  textSecondary: "#9CA3AF",
   // Muted Gray
+  error: "#EF4444"
 };
 function CapsuleSwitch({ isEnabled, onToggle }) {
   return (
@@ -400,9 +401,15 @@ export default function DashboardScreen({ navigation }) {
                         style={styles.deviceIcon} 
                       />
                       <View style={styles.deviceMeta}>
-                        <Text style={styles.deviceName} numberOfLines={1}>
-                          {device.name}
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                          <View style={[
+                            styles.statusDot, 
+                            { backgroundColor: device.is_online ? TOKENS.accent : TOKENS.error }
+                          ]} />
+                          <Text style={styles.deviceName} numberOfLines={1}>
+                            {device.name}
+                          </Text>
+                        </View>
                         <Text style={styles.deviceTypeLabel}>
                           {device.type.toUpperCase()}
                         </Text>
@@ -522,7 +529,7 @@ export default function DashboardScreen({ navigation }) {
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate("AddDevice")}
+        onPress={() => navigation.navigate("Provisioning")}
         accessibilityRole="button"
         accessibilityLabel="Register New Appliance"
       >
@@ -778,6 +785,12 @@ const styles = StyleSheet.create({
   deviceMeta: {
     flex: 1,
     marginRight: 4
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6
   },
   deviceName: {
     fontSize: 12,

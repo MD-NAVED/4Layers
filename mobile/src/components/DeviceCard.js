@@ -5,7 +5,8 @@ const TOKENS = {
   accent: "#22C55E",
   border: "#262626",
   textPrimary: "#FFFFFF",
-  textSecondary: "#9CA3AF"
+  textSecondary: "#9CA3AF",
+  error: "#EF4444"
 };
 export default function DeviceCard({ device, onToggle, onIncrease, onDecrease }) {
   // Ensure device.status is always a boolean to prevent accessibilityState null crashes
@@ -16,9 +17,15 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
   ]}>
       <View style={styles.cardHeader}>
         <View style={styles.infoBlock}>
-          <Text style={styles.deviceName} numberOfLines={1}>
-            {device.name}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={[
+              styles.statusDot, 
+              { backgroundColor: device.is_online ? TOKENS.accent : TOKENS.error }
+            ]} />
+            <Text style={styles.deviceName} numberOfLines={1}>
+              {device.name}
+            </Text>
+          </View>
           <Text style={styles.deviceType}>
             {device.type.toUpperCase()}
           </Text>
@@ -101,6 +108,12 @@ const styles = StyleSheet.create({
   infoBlock: {
     flex: 1,
     marginRight: 8
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6
   },
   deviceName: {
     fontSize: 14,

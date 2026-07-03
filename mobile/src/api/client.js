@@ -62,4 +62,17 @@ apiClient.interceptors.response.use(
   }
 );
 
+export const provisionDevice = async (macAddress, type) => {
+  try {
+    const response = await apiClient.post('/api/devices/provision', {
+      mac_address: macAddress,
+      type: type.toUpperCase()
+    });
+    return response.data; // Returns {"id": device_id}
+  } catch (error) {
+    console.error('[API Client] provisionDevice error:', error);
+    throw error;
+  }
+};
+
 export default apiClient;

@@ -16,6 +16,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AddDeviceScreen from '../screens/AddDeviceScreen';
+import ProvisioningScreen from '../screens/ProvisioningScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import RoomsScreen from '../screens/RoomsScreen';
@@ -47,6 +48,11 @@ function HomeStackScreen() {
         name="AddDevice" 
         component={AddDeviceScreen} 
         options={{ title: 'Add New Device' }} 
+      />
+      <HomeStack.Screen 
+        name="Provisioning" 
+        component={ProvisioningScreen} 
+        options={{ title: 'Provision Node' }} 
       />
       <HomeStack.Screen 
         name="Rooms" 
