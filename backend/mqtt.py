@@ -62,15 +62,28 @@ def on_message(client, userdata, msg):
             # Update database in callback thread
             db: Session = SessionLocal()
             try:
-                # Query device by node_id
-                device = db.query(models.Device).filter(models.Device.node_id == node_id).first()
+                # Query device by node_id, checking for channel indices
+                target_node_id = node_id
+                if isinstance(state_data, dict) and "channel" in state_data:
+                    target_node_id = f"{node_id}_{state_data['channel']}"
+
+                device = db.query(models.Device).filter(models.Device.node_id == target_node_id).first()
                 
                 if device:
                     previous_state = device.current_state or {}
                     was_offline = not device.is_online
                     
+                    # Extract channel-independent state
+                    clean_state = {
+                        "status": state_data.get("status", "OFF")
+                    }
+                    if "value" in state_data:
+                        clean_state["value"] = state_data["value"]
+                    elif "speed" in state_data:
+                        clean_state["value"] = state_data["speed"]
+
                     # Merge new state data into current_state
-                    new_state = {**previous_state, **state_data}
+                    new_state = {**previous_state, **clean_state}
                     
                     # If state changed, update database and log history
                     if previous_state != new_state:
@@ -84,7 +97,7 @@ def on_message(client, userdata, msg):
                             device_id=device.id,
                             change_type="status_confirmed",
                             previous_state=previous_state,
-                            new_state=state_data
+                            new_state=clean_state
                         )
                         db.add(history_entry)
 

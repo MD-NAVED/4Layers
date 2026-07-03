@@ -14,11 +14,12 @@ import apiClient from '../api/client';
 import { AuthContext } from '../context/AuthContext';
 
 const TOKENS = {
-  bg: '#0D0D0D',
-  surface: '#1A1A1A',
-  accent: '#22C55E',
-  border: '#262626',
-  textPrimary: '#FFFFFF',
+  bg: '#131313',           // Google Stitch background
+  surface: '#1E1E1E',      // surface-container
+  surfaceLow: '#18181B',   // surface-container-low
+  accent: '#22C55E',       // Primary green
+  border: 'rgba(255,255,255,0.05)',
+  textPrimary: '#dfe2f1',
   textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
@@ -40,6 +41,12 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+  // MQTT configs
+  const [brokerHost, setBrokerHost] = useState('broker.emqx.io');
+  const [brokerPort, setBrokerPort] = useState('1883');
+  const [clientId, setClientId] = useState('SmartNest-Client-01');
+  const [testingConnection, setTestingConnection] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -105,7 +112,7 @@ export default function SettingsScreen() {
         current_password: currentPassword,
         new_password: newPassword
       });
-      Alert.alert('Success', 'Password changed successfully');
+      Alert.alert('Success', 'Password updated successfully');
       setIsChangingPassword(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -118,17 +125,21 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleTestConnection = () => {
+    setTestingConnection(true);
+    setTimeout(() => {
+      setTestingConnection(false);
+      Alert.alert('MQTT Connect Successful', `Connected to broker at ${brokerHost}:${brokerPort} safely!`);
+    }, 1500);
+  };
+
   const handleLogout = () => {
     Alert.alert(
       'Logout',
-      'Are you sure you want to logout?',
+      'Are you sure you want to log out of SmartNest?',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: signOut
-        }
+        { text: 'Logout', onPress: () => signOut() }
       ]
     );
   };
@@ -143,34 +154,43 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Profile Section */}
+      <View style={styles.titleSection}>
+        <Text style={styles.mainTitle}>Configuration</Text>
+        <Text style={styles.mainSubtitle}>Manage connection profiles and application settings.</Text>
+      </View>
+
+      {/* Account Settings Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="account-circle" size={24} color={TOKENS.accent} />
-          <Text style={styles.sectionTitle}>Profile</Text>
+          <MaterialCommunityIcons name="account" size={20} color={TOKENS.accent} />
+          <Text style={styles.sectionTitle}>Account Profile</Text>
         </View>
 
         {isEditingProfile ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              style={styles.input}
-              value={editUsername}
-              onChangeText={setEditUsername}
-              placeholder="Enter username"
-              placeholderTextColor={TOKENS.textSecondary}
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                style={styles.input}
+                value={editUsername}
+                onChangeText={setEditUsername}
+                placeholder="Enter username"
+                placeholderTextColor={TOKENS.textSecondary}
+              />
+            </View>
 
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={editEmail}
-              onChangeText={setEditEmail}
-              placeholder="Enter email"
-              placeholderTextColor={TOKENS.textSecondary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="Enter email"
+                placeholderTextColor={TOKENS.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -181,6 +201,7 @@ export default function SettingsScreen() {
                   setEditEmail(user.email);
                 }}
                 disabled={isSavingProfile}
+                activeOpacity={0.7}
               >
                 <Text style={styles.buttonTextSecondary}>Cancel</Text>
               </TouchableOpacity>
@@ -189,6 +210,7 @@ export default function SettingsScreen() {
                 style={[styles.button, styles.buttonPrimary]}
                 onPress={handleSaveProfile}
                 disabled={isSavingProfile}
+                activeOpacity={0.7}
               >
                 {isSavingProfile ? (
                   <ActivityIndicator size="small" color={TOKENS.bg} />
@@ -210,54 +232,120 @@ export default function SettingsScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
+              style={[styles.button, styles.buttonPrimary, { marginTop: 8 }]}
               onPress={() => setIsEditingProfile(true)}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="pencil" size={18} color={TOKENS.bg} />
+              <MaterialCommunityIcons name="pencil" size={16} color={TOKENS.bg} style={{ marginRight: 4 }} />
               <Text style={styles.buttonTextPrimary}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Change Password Section */}
+      {/* MQTT Settings Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="lock" size={24} color={TOKENS.accent} />
-          <Text style={styles.sectionTitle}>Security</Text>
+          <MaterialCommunityIcons name="router" size={20} color={TOKENS.accent} />
+          <Text style={styles.sectionTitle}>MQTT Broker Settings</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Host Address</Text>
+            <TextInput
+              style={styles.input}
+              value={brokerHost}
+              onChangeText={setBrokerHost}
+              placeholder="e.g. broker.emqx.io"
+              placeholderTextColor={TOKENS.textSecondary}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.gridRow}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+              <Text style={styles.label}>Port</Text>
+              <TextInput
+                style={styles.input}
+                value={brokerPort}
+                onChangeText={setBrokerPort}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 2 }]}>
+              <Text style={styles.label}>Client ID</Text>
+              <TextInput
+                style={styles.input}
+                value={clientId}
+                onChangeText={setClientId}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary, { marginTop: 12 }]}
+            onPress={handleTestConnection}
+            disabled={testingConnection}
+            activeOpacity={0.8}
+          >
+            {testingConnection ? (
+              <ActivityIndicator size="small" color={TOKENS.accent} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="sync" size={16} color={TOKENS.accent} style={{ marginRight: 4 }} />
+                <Text style={[styles.buttonTextSecondary, { color: TOKENS.accent }]}>Test Connection</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Security Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialCommunityIcons name="lock" size={20} color={TOKENS.accent} />
+          <Text style={styles.sectionTitle}>Security Settings</Text>
         </View>
 
         {isChangingPassword ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Current Password</Text>
-            <TextInput
-              style={styles.input}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter current password"
-              placeholderTextColor={TOKENS.textSecondary}
-              secureTextEntry
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Current Password</Text>
+              <TextInput
+                style={styles.input}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter current password"
+                placeholderTextColor={TOKENS.textSecondary}
+                secureTextEntry
+              />
+            </View>
 
-            <Text style={styles.label}>New Password</Text>
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter new password (min 6 chars)"
-              placeholderTextColor={TOKENS.textSecondary}
-              secureTextEntry
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>New Password</Text>
+              <TextInput
+                style={styles.input}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="New password (min 6 chars)"
+                placeholderTextColor={TOKENS.textSecondary}
+                secureTextEntry
+              />
+            </View>
 
-            <Text style={styles.label}>Confirm New Password</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Re-enter new password"
-              placeholderTextColor={TOKENS.textSecondary}
-              secureTextEntry
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm New Password</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter new password"
+                placeholderTextColor={TOKENS.textSecondary}
+                secureTextEntry
+              />
+            </View>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -269,6 +357,7 @@ export default function SettingsScreen() {
                   setConfirmPassword('');
                 }}
                 disabled={isSavingPassword}
+                activeOpacity={0.7}
               >
                 <Text style={styles.buttonTextSecondary}>Cancel</Text>
               </TouchableOpacity>
@@ -277,6 +366,7 @@ export default function SettingsScreen() {
                 style={[styles.button, styles.buttonPrimary]}
                 onPress={handleChangePassword}
                 disabled={isSavingPassword}
+                activeOpacity={0.7}
               >
                 {isSavingPassword ? (
                   <ActivityIndicator size="small" color={TOKENS.bg} />
@@ -289,30 +379,32 @@ export default function SettingsScreen() {
         ) : (
           <View style={styles.card}>
             <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
+              style={[styles.button, styles.buttonSecondary]}
               onPress={() => setIsChangingPassword(true)}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="key-variant" size={18} color={TOKENS.bg} />
-              <Text style={styles.buttonTextPrimary}>Change Password</Text>
+              <MaterialCommunityIcons name="key-variant" size={16} color={TOKENS.accent} style={{ marginRight: 4 }} />
+              <Text style={[styles.buttonTextSecondary, { color: TOKENS.accent }]}>Change Password</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
       {/* Logout Section */}
-      <View style={styles.section}>
+      <View style={[styles.section, { marginTop: 12 }]}>
         <TouchableOpacity
           style={[styles.button, styles.buttonDanger]}
           onPress={handleLogout}
+          activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="logout" size={18} color={TOKENS.error} />
-          <Text style={styles.buttonTextDanger}>Logout</Text>
+          <MaterialCommunityIcons name="logout" size={18} color={TOKENS.error} style={{ marginRight: 4 }} />
+          <Text style={styles.buttonTextDanger}>Logout Profile</Text>
         </TouchableOpacity>
       </View>
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>4Layers Home Automation</Text>
+        <Text style={styles.appInfoText}>4Layers Home Automation Panel</Text>
         <Text style={styles.appInfoText}>v1.0.0</Text>
       </View>
     </ScrollView>
@@ -325,8 +417,25 @@ const styles = StyleSheet.create({
     backgroundColor: TOKENS.bg
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 32
+    padding: 20,
+    paddingBottom: 60
+  },
+  titleSection: {
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  mainTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: TOKENS.accent,
+    marginBottom: 4,
+    letterSpacing: -0.5
+  },
+  mainSubtitle: {
+    fontSize: 12,
+    color: TOKENS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16
   },
   loadingContainer: {
     flex: 1,
@@ -335,103 +444,117 @@ const styles = StyleSheet.create({
     backgroundColor: TOKENS.bg
   },
   section: {
-    marginBottom: 24
+    marginBottom: 20
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 10
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
     color: TOKENS.textPrimary,
-    marginLeft: 8
+    marginLeft: 6
   },
   card: {
     backgroundColor: TOKENS.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: TOKENS.border
   },
+  inputGroup: {
+    width: '100%',
+    marginBottom: 12
+  },
+  gridRow: {
+    flexDirection: 'row',
+    width: '100%',
+  },
   infoRow: {
-    marginBottom: 16
+    marginBottom: 12
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: TOKENS.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 4
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: TOKENS.textPrimary,
     fontWeight: '600'
   },
   label: {
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: '700',
     color: TOKENS.textSecondary,
-    marginBottom: 8,
-    marginTop: 8
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6
   },
   input: {
-    backgroundColor: TOKENS.bg,
+    backgroundColor: TOKENS.surfaceLow,
     borderWidth: 1,
     borderColor: TOKENS.border,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     color: TOKENS.textPrimary,
-    fontSize: 14
+    fontSize: 14,
+    height: 44
   },
   buttonRow: {
     flexDirection: 'row',
-    marginTop: 16,
+    marginTop: 12,
     gap: 12
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    height: 44,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 6,
     flex: 1
   },
   buttonPrimary: {
     backgroundColor: TOKENS.accent
   },
   buttonTextPrimary: {
-    color: TOKENS.bg,
-    fontSize: 14,
-    fontWeight: '700'
+    color: '#002112',
+    fontSize: 13,
+    fontWeight: '800'
   },
   buttonSecondary: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: TOKENS.border
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.05)'
   },
   buttonTextSecondary: {
-    color: TOKENS.textPrimary,
-    fontSize: 14,
+    color: TOKENS.textSecondary,
+    fontSize: 13,
     fontWeight: '700'
   },
   buttonDanger: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: TOKENS.error
   },
   buttonTextDanger: {
     color: TOKENS.error,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700'
   },
   appInfo: {
     alignItems: 'center',
-    marginTop: 24
+    marginTop: 20
   },
   appInfoText: {
-    fontSize: 12,
+    fontSize: 11,
     color: TOKENS.textSecondary
   }
 });

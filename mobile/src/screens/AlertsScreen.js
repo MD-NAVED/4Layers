@@ -13,13 +13,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
 const TOKENS = {
-  bg: '#0D0D0D',
-  surface: '#1A1A1A',
-  accent: '#22C55E',
-  border: '#262626',
-  textPrimary: '#FFFFFF',
+  bg: '#131313',           // Google Stitch background
+  surface: '#1E1E1E',      // surface-container
+  accent: '#22C55E',       // Primary green
+  border: 'rgba(255,255,255,0.05)',
+  textPrimary: '#dfe2f1',
   textSecondary: '#9CA3AF',
   error: '#EF4444',
+  warning: '#F59E0B',
   info: '#3B82F6'
 };
 
@@ -27,12 +28,12 @@ export default function AlertsScreen({ navigation }) {
   const [alerts, setAlerts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('all'); // 'all', 'critical', 'schedule'
 
   useEffect(() => {
     fetchAlerts(true);
   }, []);
 
-  // Add focus listener to auto-refresh notifications when users tap the bell badge
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchAlerts(false);
@@ -60,23 +61,19 @@ export default function AlertsScreen({ navigation }) {
   };
 
   const handleMarkAsRead = async (alertId) => {
-    // Optimistic state update
     setAlerts(prev =>
       prev.map(a => a.id === alertId ? { ...a, is_read: true } : a)
     );
-
     try {
       await apiClient.patch(`/api/alerts/${alertId}/read`);
     } catch (error) {
       console.error('Failed to mark alert as read:', error);
-      // Re-fetch to sync
       fetchAlerts(false);
     }
   };
 
   const handleMarkAllRead = async () => {
     if (alerts.filter(a => !a.is_read).length === 0) return;
-
     try {
       setIsLoading(true);
       await apiClient.patch('/api/alerts/read-all');
@@ -92,7 +89,6 @@ export default function AlertsScreen({ navigation }) {
 
   const handleClearAll = async () => {
     if (alerts.length === 0) return;
-
     Alert.alert(
       'Clear Logs',
       'Are you sure you want to permanently delete all notifications history?',
@@ -119,40 +115,27 @@ export default function AlertsScreen({ navigation }) {
     );
   };
 
-  const getAlertConfig = (type) => {
-    switch (type) {
-      case 'device_online':
-        return { icon: 'check-circle-outline', color: TOKENS.accent };
-      case 'device_offline':
-        return { icon: 'alert-circle-outline', color: TOKENS.error };
-      case 'schedule_run':
-        return { icon: 'alarm-check', color: TOKENS.info };
-      default:
-        return { icon: 'bell-outline', color: TOKENS.textSecondary };
-    }
-  };
-
-  const formatTimeAgo = (timestampStr) => {
+  const formatTime = (timestampStr) => {
     if (!timestampStr) return '';
     try {
       const date = new Date(timestampStr);
-      const seconds = Math.floor((new Date() - date) / 1000);
-      
-      let interval = Math.floor(seconds / 31536000);
-      if (interval >= 1) return interval + 'y ago';
-      interval = Math.floor(seconds / 2592000);
-      if (interval >= 1) return interval + 'mo ago';
-      interval = Math.floor(seconds / 86400);
-      if (interval >= 1) return interval + 'd ago';
-      interval = Math.floor(seconds / 3600);
-      if (interval >= 1) return interval + 'h ago';
-      interval = Math.floor(seconds / 60);
-      if (interval >= 1) return interval + 'm ago';
-      return 'just now';
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch (e) {
       return '';
     }
   };
+
+  const getFilteredAlerts = () => {
+    if (selectedFilter === 'critical') {
+      return alerts.filter(a => a.type === 'device_offline');
+    }
+    if (selectedFilter === 'schedule') {
+      return alerts.filter(a => a.type === 'schedule_run');
+    }
+    return alerts;
+  };
+
+  const filteredAlerts = getFilteredAlerts();
 
   if (isLoading && alerts.length === 0) {
     return (
@@ -164,37 +147,63 @@ export default function AlertsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Top Header Row */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>System Alerts</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={[styles.headerBtn, alerts.filter(a => !a.is_read).length === 0 && styles.disabledBtn]} 
-            onPress={handleMarkAllRead}
-            disabled={alerts.filter(a => !a.is_read).length === 0}
-          >
-            <MaterialCommunityIcons name="email-open-outline" size={16} color={TOKENS.accent} />
-            <Text style={styles.headerBtnText}>Mark Read</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.headerBtn, alerts.length === 0 && styles.disabledBtn]} 
-            onPress={handleClearAll}
-            disabled={alerts.length === 0}
-          >
-            <MaterialCommunityIcons name="trash-can-outline" size={16} color={TOKENS.error} />
-            <Text style={[styles.headerBtnText, { color: TOKENS.error }]}>Clear</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>System Log</Text>
+        <TouchableOpacity 
+          style={styles.markReadBtn} 
+          onPress={handleMarkAllRead}
+          disabled={alerts.filter(a => !a.is_read).length === 0}
+        >
+          <MaterialCommunityIcons name="check-all" size={16} color={TOKENS.accent} />
+          <Text style={styles.markReadBtnText}>Mark all read</Text>
+        </TouchableOpacity>
       </View>
 
-      {alerts.length === 0 ? (
+      {/* Horizontal Filter Chips */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity 
+          onPress={() => setSelectedFilter('all')}
+          style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
+        >
+          <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>All Events</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => setSelectedFilter('critical')}
+          style={[styles.filterChip, selectedFilter === 'critical' && styles.filterChipActive]}
+        >
+          <MaterialCommunityIcons 
+            name="alert-circle-outline" 
+            size={14} 
+            color={selectedFilter === 'critical' ? TOKENS.accent : TOKENS.error} 
+            style={styles.filterChipIcon}
+          />
+          <Text style={[styles.filterChipText, selectedFilter === 'critical' && styles.filterChipTextActive]}>Critical</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => setSelectedFilter('schedule')}
+          style={[styles.filterChip, selectedFilter === 'schedule' && styles.filterChipActive]}
+        >
+          <MaterialCommunityIcons 
+            name="clock-outline" 
+            size={14} 
+            color={selectedFilter === 'schedule' ? TOKENS.accent : TOKENS.info} 
+            style={styles.filterChipIcon}
+          />
+          <Text style={[styles.filterChipText, selectedFilter === 'schedule' && styles.filterChipTextActive]}>Automation</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* List content */}
+      {filteredAlerts.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="bell-off-outline" size={64} color={TOKENS.textSecondary} />
+          <MaterialCommunityIcons name="bell-off" size={48} color={TOKENS.textSecondary} />
           <Text style={styles.emptyText}>All systems secure.</Text>
-          <Text style={styles.emptySubtext}>No warning alerts or automation logs reported.</Text>
+          <Text style={styles.emptySubtext}>No warning alerts or automation logs reported in this tab.</Text>
         </View>
       ) : (
         <FlatList
-          data={alerts}
+          data={filteredAlerts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
@@ -206,38 +215,74 @@ export default function AlertsScreen({ navigation }) {
             />
           }
           renderItem={({ item }) => {
-            const config = getAlertConfig(item.type);
             const isUnread = !item.is_read;
+            const isOffline = item.type === 'device_offline';
+            const isSchedule = item.type === 'schedule_run';
+            
+            // Resolve icon and accent colors
+            let iconName = 'bell-outline';
+            let iconColor = TOKENS.textSecondary;
+            let stripeColor = 'rgba(255,255,255,0.05)';
+            
+            if (isOffline) {
+              iconName = 'alert-circle';
+              iconColor = TOKENS.error;
+              stripeColor = TOKENS.error;
+            } else if (isSchedule) {
+              iconName = 'calendar-clock';
+              iconColor = TOKENS.info;
+              stripeColor = TOKENS.info;
+            } else {
+              iconName = 'check-circle';
+              iconColor = TOKENS.accent;
+              stripeColor = TOKENS.accent;
+            }
+
             return (
               <TouchableOpacity
                 activeOpacity={isUnread ? 0.8 : 1}
                 style={[
                   styles.alertCard,
+                  isOffline && styles.alertCardCritical,
                   isUnread && styles.alertCardUnread
                 ]}
                 onPress={() => isUnread && handleMarkAsRead(item.id)}
               >
-                <View style={styles.alertHeader}>
-                  <View style={styles.iconTitleRow}>
-                    <MaterialCommunityIcons 
-                      name={config.icon} 
-                      size={20} 
-                      color={config.color} 
-                    />
-                    <Text style={styles.alertTime}>{formatTimeAgo(item.created_at)}</Text>
-                  </View>
-                  {isUnread && <View style={styles.unreadDot} />}
+                {/* Visual left colored stripe */}
+                <View style={[styles.indicatorStripe, { backgroundColor: stripeColor }]} />
+
+                {/* Circle Icon Badge */}
+                <View style={[styles.iconBadge, { borderColor: iconColor + '33' }]}>
+                  <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
                 </View>
-                <Text style={[
-                  styles.alertMessage,
-                  isUnread && styles.alertMessageUnread
-                ]}>
-                  {item.message}
-                </Text>
+
+                {/* Text Content */}
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={[styles.cardTitle, isUnread && styles.cardTitleUnread]} numberOfLines={1}>
+                      {isOffline ? 'Device Offline' : isSchedule ? 'Schedule Triggered' : 'Appliance Online'}
+                    </Text>
+                    <Text style={styles.cardTime}>{formatTime(item.created_at)}</Text>
+                  </View>
+                  <Text style={styles.cardMsg} numberOfLines={2}>
+                    {item.message}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           }}
         />
+      )}
+
+      {/* Clear Logs floating option button */}
+      {alerts.length > 0 && (
+        <TouchableOpacity 
+          style={styles.clearBtn} 
+          onPress={handleClearAll}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="delete-sweep" size={24} color="#002112" />
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -259,99 +304,160 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10
+    marginBottom: 16,
+    marginTop: 20
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: TOKENS.textPrimary
+    color: TOKENS.textPrimary,
+    letterSpacing: -0.5
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  headerBtn: {
+  markReadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: TOKENS.border,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
     gap: 4
   },
-  disabledBtn: {
-    opacity: 0.4
-  },
-  headerBtnText: {
+  markReadBtnText: {
     color: TOKENS.accent,
     fontWeight: '700',
-    fontSize: 11
+    fontSize: 12
   },
-  listContainer: {
-    paddingBottom: 40
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16
   },
-  alertCard: {
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     backgroundColor: TOKENS.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: TOKENS.border
   },
-  alertCardUnread: {
-    borderColor: TOKENS.accent,
-    backgroundColor: 'rgba(34, 197, 94, 0.04)'
+  filterChipActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: TOKENS.accent
   },
-  alertHeader: {
+  filterChipIcon: {
+    marginRight: 4
+  },
+  filterChipText: {
+    color: TOKENS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  filterChipTextActive: {
+    color: TOKENS.accent
+  },
+  listContainer: {
+    paddingBottom: 80
+  },
+  alertCard: {
+    flexDirection: 'row',
+    backgroundColor: TOKENS.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    padding: 14,
+    marginBottom: 12,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  alertCardCritical: {
+    borderColor: 'rgba(239, 68, 68, 0.15)'
+  },
+  alertCardUnread: {
+    shadowColor: TOKENS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2
+  },
+  indicatorStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4
+  },
+  iconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#0D0D0D',
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: 4
   },
-  iconTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: TOKENS.textSecondary,
+    flex: 1,
+    marginRight: 6
   },
-  alertTime: {
-    fontSize: 11,
+  cardTitleUnread: {
+    color: TOKENS.textPrimary
+  },
+  cardTime: {
+    fontSize: 10,
     color: TOKENS.textSecondary,
     fontWeight: '500'
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: TOKENS.accent
-  },
-  alertMessage: {
-    fontSize: 13,
+  cardMsg: {
+    fontSize: 12,
     color: TOKENS.textSecondary,
-    lineHeight: 18
-  },
-  alertMessageUnread: {
-    color: TOKENS.textPrimary,
-    fontWeight: '600'
+    lineHeight: 16
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32
+    paddingHorizontal: 32,
+    paddingBottom: 100
   },
   emptyText: {
     fontSize: 16,
     color: TOKENS.textPrimary,
     fontWeight: '700',
     marginTop: 16,
-    marginBottom: 8
+    marginBottom: 6
   },
   emptySubtext: {
     fontSize: 12,
     color: TOKENS.textSecondary,
     textAlign: 'center',
     lineHeight: 18
+  },
+  clearBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: TOKENS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5
   }
 });

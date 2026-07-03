@@ -40,39 +40,62 @@ def add_device(
                 detail="Room not found inside this home"
             )
 
-    # Check if node_id already exists in database
-    existing_node = db.query(models.Device).filter(models.Device.node_id == device_data.node_id).first()
+    base_node_id = device_data.node_id.strip()
+
+    # Check if this node or any of its channels is already registered
+    existing_node = db.query(models.Device).filter(
+        (models.Device.node_id == base_node_id) | 
+        (models.Device.node_id.like(f"{base_node_id}_%"))
+    ).first()
     if existing_node:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Device node '{device_data.node_id}' is already registered"
+            detail=f"Device node '{base_node_id}' is already registered"
         )
 
-    # Create the device in DB (starts as offline, default empty state)
-    new_device = models.Device(
-        name=device_data.name,
-        device_type=device_data.device_type,
-        node_id=device_data.node_id,
-        home_id=device_data.home_id,
-        room_id=device_data.room_id,
-        is_online=False,
-        current_state={}
-    )
-    db.add(new_device)
-    db.commit()
-    db.refresh(new_device)
+    # Automatically create the 7 channels of the switchboard board
+    channel_configs = [
+        {"suffix": "1", "name": "Switch 1", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "2", "name": "Switch 2", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "3", "name": "Switch 3", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "4", "name": "Switch 4", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "5", "name": "Fan", "type": "fan", "state": {"status": "OFF", "value": 3}},
+        {"suffix": "6", "name": "LED Strip", "type": "light", "state": {"status": "OFF", "value": 50}},
+        {"suffix": "7", "name": "Master Switch", "type": "outlet", "state": {"status": "OFF"}}
+    ]
 
-    # Log the device creation in history log
-    history_entry = models.DeviceHistory(
-        device_id=new_device.id,
-        change_type="device_created",
-        previous_state=None,
-        new_state={}
-    )
-    db.add(history_entry)
-    db.commit()
+    created_devices = []
+    for cfg in channel_configs:
+        chan_node_id = f"{base_node_id}_{cfg['suffix']}"
+        chan_name = f"{device_data.name} {cfg['name']}" if device_data.name else cfg['name']
+        
+        new_device = models.Device(
+            name=chan_name,
+            device_type=cfg['type'],
+            node_id=chan_node_id,
+            home_id=device_data.home_id,
+            room_id=device_data.room_id,
+            is_online=False,
+            current_state=cfg['state']
+        )
+        db.add(new_device)
+        db.commit()
+        db.refresh(new_device)
 
-    return new_device
+        # Log creation
+        history_entry = models.DeviceHistory(
+            device_id=new_device.id,
+            change_type="device_created",
+            previous_state=None,
+            new_state=cfg['state']
+        )
+        db.add(history_entry)
+        db.commit()
+        
+        created_devices.append(new_device)
+
+    # Return the first channel (Switch 1) to satisfy API schema
+    return created_devices[0]
 
 @router.get("", response_model=List[schemas.DeviceResponse])
 def get_devices(
@@ -145,9 +168,31 @@ def control_device(
 
     # 2. Publish MQTT control message
     # Topic: home/device/{node_id}/control
+    node_id_to_publish = device.node_id
+    payload_to_publish = requested_state
+    
+    if "_" in device.node_id:
+        parts = device.node_id.rsplit('_', 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            base_node_id = parts[0]
+            channel = int(parts[1])
+            status_val = requested_state.get("status", "OFF")
+            
+            payload_to_publish = {
+                "channel": channel,
+                "status": status_val
+            }
+            if "value" in requested_state:
+                if device.device_type == "fan":
+                    payload_to_publish["speed"] = requested_state["value"]
+                else:
+                    payload_to_publish["value"] = requested_state["value"]
+                    
+            node_id_to_publish = base_node_id
+
     mqtt.publish_control_message(
-        node_id=device.node_id,
-        state=requested_state
+        node_id=node_id_to_publish,
+        state=payload_to_publish
     )
 
     return {
@@ -217,9 +262,31 @@ def bulk_control_devices(
         db.add(history_entry)
 
         # Publish MQTT message
+        node_id_to_publish = device.node_id
+        payload_to_publish = requested_state
+        
+        if "_" in device.node_id:
+            parts = device.node_id.rsplit('_', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                base_node_id = parts[0]
+                channel = int(parts[1])
+                status_val = requested_state.get("status", "OFF")
+                
+                payload_to_publish = {
+                    "channel": channel,
+                    "status": status_val
+                }
+                if "value" in requested_state:
+                    if device.device_type == "fan":
+                        payload_to_publish["speed"] = requested_state["value"]
+                    else:
+                        payload_to_publish["value"] = requested_state["value"]
+                        
+                node_id_to_publish = base_node_id
+
         mqtt.publish_control_message(
-            node_id=device.node_id,
-            state=requested_state
+            node_id=node_id_to_publish,
+            state=payload_to_publish
         )
 
     db.commit()

@@ -16,11 +16,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
 const TOKENS = {
-  bg: '#0D0D0D',
-  surface: '#1A1A1A',
+  bg: '#131313',
+  surface: '#1E1E1E',
   accent: '#22C55E',
-  border: '#262626',
-  textPrimary: '#FFFFFF',
+  border: 'rgba(255,255,255,0.05)',
+  textPrimary: '#dfe2f1',
   textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
@@ -195,6 +195,39 @@ export default function SchedulesScreen() {
     return list.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
   };
 
+  const renderDaysList = (csvDays) => {
+    const list = csvDays ? csvDays.split(',') : [];
+    const DAYS_CONFIG = [
+      { key: 'mon', label: 'M' },
+      { key: 'tue', label: 'T' },
+      { key: 'wed', label: 'W' },
+      { key: 'thu', label: 'T' },
+      { key: 'fri', label: 'F' },
+      { key: 'sat', label: 'S' },
+      { key: 'sun', label: 'S' }
+    ];
+    return (
+      <View style={styles.daysBadgeRow}>
+        {DAYS_CONFIG.map((day, idx) => {
+          const isActive = list.includes(day.key);
+          return (
+            <View 
+              key={idx} 
+              style={[
+                styles.dayBadge, 
+                isActive && styles.dayBadgeActive
+              ]}
+            >
+              <Text style={[styles.dayBadgeText, isActive && styles.dayBadgeTextActive]}>
+                {day.label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -225,32 +258,41 @@ export default function SchedulesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <View style={styles.scheduleCard}>
-              <View style={styles.scheduleInfo}>
-                <View style={styles.timeBadge}>
-                  <Text style={styles.timeText}>{item.time}</Text>
+            <View style={[styles.scheduleCard, !item.enabled && styles.scheduleCardDisabled]}>
+              <View style={styles.scheduleCardHeader}>
+                <View style={styles.scheduleTimeGroup}>
+                  <Text style={styles.scheduleTimeText}>{item.time}</Text>
+                  <Text style={styles.scheduleTimeSub}>IST</Text>
                 </View>
-                <View style={styles.textGroup}>
-                  <Text style={styles.deviceName} numberOfLines={1}>{getDeviceName(item.device_id)}</Text>
-                  <Text style={styles.actionText}>
-                    Action: <Text style={{ color: item.action === 'ON' ? TOKENS.accent : TOKENS.error }}>{item.action}</Text>
-                  </Text>
-                  <Text style={styles.daysText}>{formatDaysLabel(item.days)}</Text>
-                </View>
-              </View>
-              <View style={styles.cardControls}>
                 <Switch
                   value={item.enabled}
                   onValueChange={() => handleToggleEnabled(item.id, item.enabled)}
-                  trackColor={{ false: TOKENS.bg, true: 'rgba(34, 197, 94, 0.4)' }}
+                  trackColor={{ false: '#313540', true: 'rgba(34, 197, 94, 0.4)' }}
                   thumbColor={item.enabled ? TOKENS.accent : TOKENS.textSecondary}
                 />
-                <View style={styles.cardActionButtons}>
-                  <TouchableOpacity onPress={() => handleRunScheduleNow(item.id)} style={styles.testBtn}>
-                    <MaterialCommunityIcons name="play-circle-outline" size={20} color={TOKENS.accent} />
+              </View>
+
+              <View style={styles.scheduleDetails}>
+                <MaterialCommunityIcons 
+                  name={item.action === 'ON' ? "power" : "power-off"} 
+                  size={16} 
+                  color={item.action === 'ON' ? TOKENS.accent : TOKENS.error} 
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.scheduleDeviceName} numberOfLines={1}>
+                  Turn <Text style={{ color: item.action === 'ON' ? TOKENS.accent : TOKENS.error, fontWeight: 'bold' }}>{item.action}</Text> {getDeviceName(item.device_id)}
+                </Text>
+              </View>
+
+              {/* Days Week list row */}
+              <View style={styles.cardBottomRow}>
+                {renderDaysList(item.days)}
+                <View style={styles.cardActions}>
+                  <TouchableOpacity onPress={() => handleRunScheduleNow(item.id)} style={styles.cardActionBtn}>
+                    <MaterialCommunityIcons name="play" size={16} color={TOKENS.accent} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteSchedule(item.id)}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={20} color={TOKENS.error} />
+                  <TouchableOpacity onPress={() => handleDeleteSchedule(item.id)} style={styles.cardActionBtn}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={TOKENS.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -425,67 +467,114 @@ const styles = StyleSheet.create({
     paddingBottom: 20
   },
   scheduleCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: TOKENS.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: TOKENS.border
+    borderColor: TOKENS.border,
+    flexDirection: 'column',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2
   },
-  scheduleInfo: {
+  scheduleCardDisabled: {
+    opacity: 0.6
+  },
+  scheduleCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%'
+  },
+  scheduleTimeGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4
+  },
+  scheduleTimeText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: TOKENS.textPrimary,
+    letterSpacing: -0.5
+  },
+  scheduleTimeSub: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: TOKENS.textSecondary
+  },
+  scheduleDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    width: '100%',
+    backgroundColor: '#0D0D0D',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.02)'
+  },
+  scheduleDeviceName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TOKENS.textSecondary,
     flex: 1
   },
-  timeBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: TOKENS.bg,
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 4
+  },
+  daysBadgeRow: {
+    flexDirection: 'row',
+    gap: 4
+  },
+  dayBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent'
+  },
+  dayBadgeActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.4)'
+  },
+  dayBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: TOKENS.textSecondary
+  },
+  dayBadgeTextActive: {
+    color: TOKENS.accent,
+    fontWeight: 'bold'
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  cardActionBtn: {
+    padding: 4,
+    backgroundColor: '#0D0D0D',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: TOKENS.border,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  timeText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: TOKENS.accent
-  },
-  textGroup: {
-    flex: 1,
-    justifyContent: 'center'
-  },
-  deviceName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: TOKENS.textPrimary
-  },
-  actionText: {
-    fontSize: 12,
-    color: TOKENS.textSecondary,
-    marginTop: 3,
-    fontWeight: '600'
-  },
-  daysText: {
-    fontSize: 11,
-    color: TOKENS.textSecondary,
-    marginTop: 2
-  },
-  cardControls: {
+    borderColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
-    gap: 12,
-    marginLeft: 8
+    justifyContent: 'center'
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32
+    paddingHorizontal: 32,
+    paddingBottom: 80
   },
   emptyText: {
     fontSize: 16,

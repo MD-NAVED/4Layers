@@ -26,6 +26,27 @@ const TOKENS = {
   textSecondary: "#9CA3AF"
   // Muted Gray
 };
+function CapsuleSwitch({ isEnabled, onToggle }) {
+  return (
+    <View style={styles.capsuleContainer}>
+      <TouchableOpacity
+        style={[styles.capsuleButton, isEnabled && styles.capsuleBtnOnActive]}
+        onPress={() => !isEnabled && onToggle()}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.capsuleText, isEnabled ? styles.capsuleTextOnActive : styles.capsuleTextInactive]}>On</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.capsuleButton, !isEnabled && styles.capsuleBtnOffActive]}
+        onPress={() => isEnabled && onToggle()}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.capsuleText, !isEnabled ? styles.capsuleTextOffActive : styles.capsuleTextInactive]}>Off</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function DashboardScreen({ navigation }) {
   const [selectedRoom, setSelectedRoom] = useState("all");
   const [isArmed, setIsArmed] = useState(true);
@@ -270,31 +291,24 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Real Master Switch Card */}
         {filteredDevices.length > 0 && (
-          <View style={[styles.card, filteredDevices.some(d => d.status) && styles.cardActiveBorder]}>
-            <View style={styles.securityRow}>
-              <View style={styles.securityTextGroup}>
-                <Text style={styles.cardTitle}>Master Switch</Text>
-                <Text style={styles.cardSubtitle}>
-                  Turn all {selectedRoom === "all" ? "home" : "room"} devices ON or OFF
+          <View style={[styles.masterCard, filteredDevices.some(d => d.status) && styles.masterCardActive]}>
+            <View style={styles.masterInfoGroup}>
+              <MaterialCommunityIcons 
+                name="power" 
+                size={28} 
+                color={filteredDevices.some(d => d.status) ? TOKENS.accent : TOKENS.textSecondary} 
+              />
+              <View style={styles.masterTextGroup}>
+                <Text style={styles.masterTitle}>MASTER SWITCH</Text>
+                <Text style={styles.masterSubtitle}>
+                  All {selectedRoom === "all" ? "home" : "room"} switches
                 </Text>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[
-                  styles.switchTrack,
-                  filteredDevices.some(d => d.status) && styles.switchTrackActive
-                ]}
-                onPress={() => handleBulkControl(!filteredDevices.some(d => d.status))}
-                accessibilityRole="switch"
-                accessibilityState={filteredDevices.some(d => d.status) ? { checked: true } : { checked: false }}
-                accessibilityLabel="Master Switch State"
-              >
-                <View style={[
-                  styles.switchThumb,
-                  filteredDevices.some(d => d.status) && styles.switchThumbActive
-                ]} />
-              </TouchableOpacity>
             </View>
+            <CapsuleSwitch 
+              isEnabled={filteredDevices.some(d => d.status)} 
+              onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))} 
+            />
           </View>
         )}
 
@@ -352,89 +366,155 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statusSubtitle}>FastAPI server is sleeping. Local telemetry simulation running.</Text>
           </View> : filteredDevices.length === 0 ? <View style={styles.statusBox}>
             <Text style={styles.statusText}>No devices in this room yet</Text>
-          </View> : <View style={styles.gridContainer}>
+          </View> : <View style={styles.listContainer}>
             {filteredDevices.map((device) => {
-    const isEnabled = !!device.status;
-    return <View
-      key={device.id}
-      style={[
-        styles.gridItem,
-        !!isEnabled && styles.gridItemActive
-      ]}
-    >
-                  <View style={styles.deviceHeader}>
-                    <View style={styles.deviceMeta}>
-                      <Text style={styles.deviceName} numberOfLines={1}>
-                        {device.name}
-                      </Text>
-                      <Text style={styles.deviceTypeLabel}>
-                        {device.type.toUpperCase()}
-                      </Text>
+              const isEnabled = !!device.status;
+              const getDeviceIcon = (type, active) => {
+                switch (type) {
+                  case 'light':
+                    return active ? 'lightbulb' : 'lightbulb-outline';
+                  case 'thermostat':
+                    return 'thermostat';
+                  case 'fan':
+                    return 'fan';
+                  default:
+                    return active ? 'power-plug' : 'power-plug-off';
+                }
+              };
+              
+              return (
+                <View
+                  key={device.id}
+                  style={[
+                    styles.listItem,
+                    !!isEnabled && styles.listItemActive
+                  ]}
+                >
+                  {/* Top Control Row */}
+                  <View style={styles.deviceRow}>
+                    <View style={styles.deviceLeftGroup}>
+                      <MaterialCommunityIcons 
+                        name={getDeviceIcon(device.type, isEnabled)} 
+                        size={24} 
+                        color={isEnabled ? TOKENS.accent : TOKENS.textSecondary} 
+                        style={styles.deviceIcon} 
+                      />
+                      <View style={styles.deviceMeta}>
+                        <Text style={styles.deviceName} numberOfLines={1}>
+                          {device.name}
+                        </Text>
+                        <Text style={styles.deviceTypeLabel}>
+                          {device.type.toUpperCase()}
+                        </Text>
+                      </View>
                     </View>
-                    
-                    {
-      /* Inline Toggle */
-    }
-                    <TouchableOpacity
-      activeOpacity={0.8}
-      style={[
-        styles.deviceSwitchTrack,
-        !!isEnabled && styles.deviceSwitchTrackActive
-      ]}
-      onPress={() => handleToggleDevice(device.id)}
-      accessibilityRole="switch"
-      accessibilityState={isEnabled ? { checked: true } : { checked: false }}
-      accessibilityLabel={`Toggle power for ${device.name}`}
-    >
-                      <View style={[
-      styles.deviceSwitchThumb,
-      !!isEnabled && styles.deviceSwitchThumbActive
-    ]} />
-                    </TouchableOpacity>
+                    <CapsuleSwitch 
+                      isEnabled={isEnabled} 
+                      onToggle={() => handleToggleDevice(device.id)} 
+                    />
                   </View>
 
-                  {
-      /* Brightness / Temperature Steppers */
-    }
-                  {(device.type === "light" || device.type === "thermostat") && <View style={styles.stepperContainer}>
-                      <TouchableOpacity
-      activeOpacity={0.7}
-      style={styles.stepButton}
-      onPress={() => handleAdjustValue(device.id, device.type === "thermostat" ? -1 : -10)}
-      disabled={!isEnabled}
-      accessibilityRole="button"
-      accessibilityLabel="Decrease value"
-    >
-                        <Text style={styles.stepButtonText}>-</Text>
-                      </TouchableOpacity>
+                  {/* Fan Speed Slider Controls */}
+                  {device.type === "fan" && (
+                    <View style={styles.sliderContainer}>
+                      <View style={styles.sliderTrackRow}>
+                        <MaterialCommunityIcons name="snowflake" size={14} color={TOKENS.textSecondary} />
+                        <View style={styles.sliderTrack}>
+                          <View style={[styles.sliderProgress, { width: `${(device.value / 5) * 100}%` }]} />
+                        </View>
+                        <MaterialCommunityIcons name="air-conditioner" size={14} color={TOKENS.textSecondary} />
+                      </View>
+                      <View style={styles.sliderAdjuster}>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, -1)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.sliderValueText}>Speed {device.value}/5</Text>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, 1)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
 
-                      <Text style={[styles.stepValueText, !isEnabled && styles.disabledText]}>
-                        {device.value}{device.type === "light" ? "%" : "\xB0"}
+                  {/* Light Dimmer/Brightness Slider Controls */}
+                  {device.type === "light" && (
+                    <View style={styles.sliderContainer}>
+                      <View style={styles.sliderTrackRow}>
+                        <MaterialCommunityIcons name="brightness-5" size={14} color={TOKENS.textSecondary} />
+                        <View style={styles.sliderTrack}>
+                          <View style={[styles.sliderProgress, { width: `${device.value}%` }]} />
+                        </View>
+                        <MaterialCommunityIcons name="brightness-7" size={14} color={TOKENS.textSecondary} />
+                      </View>
+                      <View style={styles.sliderAdjuster}>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, -10)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.sliderValueText}>Brightness {device.value}%</Text>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, 10)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Thermostat Controls */}
+                  {device.type === "thermostat" && (
+                    <View style={styles.sliderContainer}>
+                      <View style={styles.sliderAdjuster}>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, -1)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.sliderValueText}>Temp {device.value}°F</Text>
+                        <TouchableOpacity 
+                          style={styles.sliderBtn} 
+                          onPress={() => handleAdjustValue(device.id, 1)}
+                          disabled={!isEnabled}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.sliderBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Outlet Power consumption */}
+                  {device.type === "outlet" && (
+                    <View style={styles.powerConsumptionRow}>
+                      <Text style={styles.powerLabel}>Load Power</Text>
+                      <Text style={[styles.powerValue, isEnabled && styles.powerValueActive]}>
+                        {isEnabled ? `${device.value} W` : "0 W"}
                       </Text>
-
-                      <TouchableOpacity
-      activeOpacity={0.7}
-      style={styles.stepButton}
-      onPress={() => handleAdjustValue(device.id, device.type === "thermostat" ? 1 : 10)}
-      disabled={!isEnabled}
-      accessibilityRole="button"
-      accessibilityLabel="Increase value"
-    >
-                        <Text style={styles.stepButtonText}>+</Text>
-                      </TouchableOpacity>
-                    </View>}
-
-                  {
-      /* Outlet specific information */
-    }
-                  {device.type === "outlet" && <View style={styles.powerInfoRow}>
-                      <Text style={styles.powerInfoLabel}>Consumption</Text>
-                      <Text style={[styles.powerInfoValue, !!isEnabled && styles.powerInfoValueActive]}>
-                        {isEnabled ? `${device.value}W` : "0W"}
-                      </Text>
-                    </View>}
-                </View>;
-  })}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>}
 
       </ScrollView>
@@ -847,63 +927,187 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700"
   },
-  masterSwitchCard: {
-    backgroundColor: TOKENS.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: TOKENS.border,
+  masterCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: TOKENS.cardBg,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.03)",
     marginBottom: 16,
-    flexDirection: "column",
-    gap: 12
+    shadowColor: "#22C55E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3
   },
-  masterSwitchInfo: {
+  masterCardActive: {
+    borderColor: "rgba(34, 197, 94, 0.25)",
+  },
+  masterInfoGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10
+    gap: 12,
+    flex: 1,
+    marginRight: 8
   },
-  masterSwitchTextGroup: {
+  masterTextGroup: {
     flex: 1
   },
-  masterSwitchTitle: {
+  masterTitle: {
     fontSize: 14,
-    fontWeight: "700",
-    color: TOKENS.textPrimary
+    fontWeight: "800",
+    color: TOKENS.textPrimary,
+    letterSpacing: 0.5
   },
-  masterSwitchSubtitle: {
+  masterSubtitle: {
     fontSize: 11,
     color: TOKENS.textSecondary,
     marginTop: 2
   },
-  masterSwitchActions: {
+  capsuleContainer: {
     flexDirection: "row",
-    gap: 10
+    width: 108,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#0D0D0D",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    overflow: "hidden"
   },
-  bulkButton: {
+  capsuleButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1
+    justifyContent: "center"
   },
-  bulkButtonOff: {
-    backgroundColor: "transparent",
-    borderColor: "#EF4444"
+  capsuleBtnOnActive: {
+    backgroundColor: "#22C55E",
   },
-  bulkButtonOn: {
+  capsuleBtnOffActive: {
+    backgroundColor: "#1E1E1E",
+  },
+  capsuleText: {
+    fontSize: 11,
+    fontWeight: "bold"
+  },
+  capsuleTextOnActive: {
+    color: "#002112",
+  },
+  capsuleTextOffActive: {
+    color: "#dfe2f1",
+  },
+  capsuleTextInactive: {
+    color: "#4B5563"
+  },
+  listContainer: {
+    flexDirection: "column",
+    gap: 12,
+    width: "100%"
+  },
+  listItem: {
+    width: "100%",
+    backgroundColor: TOKENS.cardBg,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    flexDirection: "column",
+    gap: 12
+  },
+  listItemActive: {
+    borderColor: "rgba(34, 197, 94, 0.25)"
+  },
+  deviceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%"
+  },
+  deviceLeftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+    marginRight: 8
+  },
+  deviceIcon: {
+    marginRight: 2
+  },
+  sliderContainer: {
+    width: "100%",
+    marginTop: 4,
+    backgroundColor: "#0D0D0D",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.03)"
+  },
+  sliderTrackRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    marginBottom: 8
+  },
+  sliderTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 2,
+    overflow: "hidden"
+  },
+  sliderProgress: {
+    height: "100%",
     backgroundColor: TOKENS.accent,
-    borderColor: TOKENS.accent
+    borderRadius: 2
   },
-  bulkButtonTextOff: {
-    color: "#EF4444",
-    fontSize: 12,
-    fontWeight: "700"
+  sliderAdjuster: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
   },
-  bulkButtonTextOn: {
-    color: TOKENS.bg,
+  sliderBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#1E1E1E",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  sliderBtnText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: TOKENS.textPrimary
+  },
+  sliderValueText: {
     fontSize: 12,
-    fontWeight: "700"
+    fontWeight: "bold",
+    color: TOKENS.textPrimary
+  },
+  powerConsumptionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0D0D0D",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.03)"
+  },
+  powerLabel: {
+    fontSize: 10,
+    color: TOKENS.textSecondary
+  },
+  powerValue: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: TOKENS.textSecondary
+  },
+  powerValueActive: {
+    color: TOKENS.accent
   },
   fab: {
     position: "absolute",
