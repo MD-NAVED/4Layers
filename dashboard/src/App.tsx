@@ -26,16 +26,15 @@ import {
   Sparkles,
   Search,
   ArrowRight,
-  LogOut
+  LogOut,
+  Trash2
 } from 'lucide-react';
 
 import { Device, Room, Node, Schedule, AlertLog } from './types';
 import { 
   initialRooms, 
   initialNodes, 
-  initialDevices, 
-  initialSchedules, 
-  initialAlerts 
+  initialDevices 
 } from './data';
 
 import DeviceControlCard from './components/DeviceControlCard';
@@ -55,23 +54,11 @@ export default function App() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [devices, setDevices] = useState<Device[]>([]);
   
-  // Persisted state managers (stored locally in browser since no DB table exists)
-  const [schedules, setSchedules] = useState<Schedule[]>(() => {
-    try {
-      const saved = localStorage.getItem('schedules');
-      return saved ? JSON.parse(saved) : initialSchedules;
-    } catch (e) {
-      return initialSchedules;
-    }
-  });
-  const [alerts, setAlerts] = useState<AlertLog[]>(() => {
-    try {
-      const saved = localStorage.getItem('alerts');
-      return saved ? JSON.parse(saved) : initialAlerts;
-    } catch (e) {
-      return initialAlerts;
-    }
-  });
+  // Schedules & Alerts: synced with FastAPI backend (no localStorage)
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [alerts, setAlerts] = useState<AlertLog[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [alertsLoading, setAlertsLoading] = useState(false);
   
   // Navigation & Filtering
   const [selectedRoomId, setSelectedRoomId] = useState<string>('room-all');
@@ -113,14 +100,63 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Save schedules and alerts locally whenever they change
-  useEffect(() => {
-    localStorage.setItem('schedules', JSON.stringify(schedules));
-  }, [schedules]);
+  // --- API Fetchers for Schedules & Alerts ---
+  const fetchSchedules = useCallback(async (authToken: string) => {
+    try {
+      setSchedulesLoading(true);
+      const res = await fetch(`${backendUrl}/api/schedules`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const formatted: Schedule[] = data.map((s: any) => ({
+          id: s.id,
+          deviceId: s.device_id,
+          deviceName: s.device?.name || 'Unknown Device',
+          action: s.action?.toLowerCase() === 'on' ? 'on' : 'off',
+          time: s.time,
+          days: s.days.split(',').map((d: string) => {
+            const trimmed = d.trim().toLowerCase();
+            if (trimmed === 'daily') return 'daily';
+            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+          }).filter((d: string) => d !== 'daily'),
+          enabled: s.enabled
+        }));
+        setSchedules(formatted);
+      }
+    } catch (err) {
+      console.error('[App] Error fetching schedules:', err);
+    } finally {
+      setSchedulesLoading(false);
+    }
+  }, [backendUrl]);
 
-  useEffect(() => {
-    localStorage.setItem('alerts', JSON.stringify(alerts));
-  }, [alerts]);
+  const fetchAlerts = useCallback(async (authToken: string) => {
+    try {
+      setAlertsLoading(true);
+      const res = await fetch(`${backendUrl}/api/alerts`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const formatted: AlertLog[] = data.map((a: any) => ({
+          id: a.id,
+          timestamp: new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          message: a.message,
+          type: a.type === 'device_online' ? 'success' 
+              : a.type === 'device_offline' ? 'error' 
+              : a.type === 'schedule_run' ? 'success' 
+              : 'info',
+          nodeId: undefined
+        }));
+        setAlerts(formatted);
+      }
+    } catch (err) {
+      console.error('[App] Error fetching alerts:', err);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, [backendUrl]);
 
   // Logger helper
   const addAlert = (message: string, type: AlertLog['type'] = 'info', nodeId?: string) => {
@@ -302,14 +338,18 @@ export default function App() {
     fetchRoomsAndHome(token).then(() => {
       fetchDevices(token);
     });
+    fetchSchedules(token);
+    fetchAlerts(token);
 
     // 10-second polling interval
     const interval = setInterval(() => {
       fetchDevices(token);
+      fetchSchedules(token);
+      fetchAlerts(token);
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [token, fetchDevices]);
+  }, [token, fetchDevices, fetchSchedules, fetchAlerts]);
 
   const handleLoginSuccess = (newToken: string) => {
     localStorage.setItem('token', newToken);
@@ -559,32 +599,128 @@ export default function App() {
     return id;
   };
 
-  // Schedule Management
-  const handleAddSchedule = (newSched: Schedule) => {
+  // Schedule Management — wired to FastAPI backend
+  const handleAddSchedule = async (newSched: Schedule) => {
+    if (!token) return;
+    // Optimistic UI update
     setSchedules(prev => [...prev, newSched]);
-    addAlert(`Cron Timer Rule committed: Trigger ${newSched.deviceName} ${newSched.action.toUpperCase()} at ${newSched.time}.`, 'success');
-  };
 
-  const handleDeleteSchedule = (id: string) => {
-    const sched = schedules.find(s => s.id === id);
-    setSchedules(prev => prev.filter(s => s.id !== id));
-    if (sched) {
-      addAlert(`Removed automated schedule rule for ${sched.deviceName}.`, 'info');
+    try {
+      const payload = {
+        device_id: newSched.deviceId,
+        action: newSched.action.toUpperCase(),
+        time: newSched.time,
+        days: newSched.days.map(d => d.toLowerCase()).join(','),
+        enabled: true
+      };
+
+      const res = await fetch(`${backendUrl}/api/schedules`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to create schedule');
+      }
+
+      // Re-fetch from server to get correct IDs
+      fetchSchedules(token);
+      addAlert(`Cron Timer Rule committed: Trigger ${newSched.deviceName} ${newSched.action.toUpperCase()} at ${newSched.time}.`, 'success');
+    } catch (err: any) {
+      console.error('[App] Schedule creation failed:', err);
+      // Roll back optimistic update
+      setSchedules(prev => prev.filter(s => s.id !== newSched.id));
     }
   };
 
-  const handleToggleSchedule = (id: string) => {
-    setSchedules(prev => prev.map(s => {
-      if (s.id === id) {
-        const nextEnabled = !s.enabled;
-        addAlert(
-          `Timer rule for ${s.deviceName} turned ${nextEnabled ? 'ON' : 'OFF'}.`,
-          nextEnabled ? 'success' : 'info'
-        );
-        return { ...s, enabled: nextEnabled };
+  const handleDeleteSchedule = async (id: string) => {
+    if (!token) return;
+    const sched = schedules.find(s => s.id === id);
+    // Optimistic UI update
+    setSchedules(prev => prev.filter(s => s.id !== id));
+
+    try {
+      const res = await fetch(`${backendUrl}/api/schedules/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) throw new Error('Failed to delete schedule');
+
+      if (sched) {
+        addAlert(`Removed automated schedule rule for ${sched.deviceName}.`, 'info');
       }
-      return s;
-    }));
+    } catch (err) {
+      console.error('[App] Schedule deletion failed:', err);
+      // Re-fetch to restore correct state
+      fetchSchedules(token);
+    }
+  };
+
+  const handleToggleSchedule = async (id: string) => {
+    if (!token) return;
+    const sched = schedules.find(s => s.id === id);
+    if (!sched) return;
+    const nextEnabled = !sched.enabled;
+
+    // Optimistic UI update
+    setSchedules(prev => prev.map(s => s.id === id ? { ...s, enabled: nextEnabled } : s));
+
+    try {
+      const res = await fetch(`${backendUrl}/api/schedules/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled: nextEnabled })
+      });
+
+      if (!res.ok) throw new Error('Failed to update schedule');
+
+      addAlert(
+        `Timer rule for ${sched.deviceName} turned ${nextEnabled ? 'ON' : 'OFF'}.`,
+        nextEnabled ? 'success' : 'info'
+      );
+    } catch (err) {
+      console.error('[App] Schedule toggle failed:', err);
+      // Roll back
+      setSchedules(prev => prev.map(s => s.id === id ? { ...s, enabled: !nextEnabled } : s));
+    }
+  };
+
+  // Alert Management — wired to FastAPI backend
+  const handleDeleteAlert = async (alertId: string) => {
+    if (!token) return;
+    setAlerts(prev => prev.filter(a => a.id !== alertId));
+    try {
+      await fetch(`${backendUrl}/api/alerts/${alertId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('[App] Alert deletion failed:', err);
+      fetchAlerts(token);
+    }
+  };
+
+  const handleClearAllAlerts = async () => {
+    if (!token) return;
+    setAlerts([]);
+    try {
+      await fetch(`${backendUrl}/api/alerts`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('[App] Clear all alerts failed:', err);
+      fetchAlerts(token);
+    }
   };
 
   // FastAPI live diagnostic test
@@ -757,6 +893,63 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* NOTIFICATION CENTER DROPDOWN PANEL */}
+      {showNotificationCenter && (
+        <div className="fixed top-16 right-5 z-50 w-96 max-h-[480px] bg-brand-card border border-brand-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border/50">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-brand-green" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Alert Center</h3>
+              <span className="text-[9px] bg-brand-green/10 border border-brand-green/30 text-brand-green px-1.5 py-0.5 rounded font-mono font-bold">
+                {alerts.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {alerts.length > 0 && (
+                <button
+                  onClick={handleClearAllAlerts}
+                  className="text-[9px] font-mono text-red-400 hover:text-red-300 uppercase tracking-wide"
+                >
+                  Clear All
+                </button>
+              )}
+              <button onClick={() => setShowNotificationCenter(false)} className="text-gray-500 hover:text-white">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-[400px] divide-y divide-brand-border/30">
+            {alertsLoading && alerts.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-500 font-mono">Loading alerts...</div>
+            ) : alerts.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-500 font-mono">No alerts recorded.</div>
+            ) : (
+              alerts.map((alert) => (
+                <div key={alert.id} className="flex items-start gap-3 px-4 py-3 hover:bg-brand-dark/40 transition-colors group">
+                  <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
+                    alert.type === 'success' ? 'bg-brand-green' :
+                    alert.type === 'error' ? 'bg-red-500' :
+                    alert.type === 'warning' ? 'bg-yellow-500' :
+                    'bg-blue-500'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-gray-300 leading-relaxed">{alert.message}</p>
+                    <span className="text-[9px] text-gray-600 font-mono mt-0.5 block">{alert.timestamp}</span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteAlert(alert.id)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-all shrink-0"
+                    title="Delete alert"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 2. CORE WORKSPACE LAYOUT */}
       <main className="flex-1 p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-[1600px] w-full mx-auto">

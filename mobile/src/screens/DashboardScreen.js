@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -147,8 +147,12 @@ export default function DashboardScreen({ navigation }) {
     fetchProfile();
   }, []);
 
+  const hasLoadedRef = useRef(false);
+
   useEffect(() => {
-    fetchDevices(devices.length === 0);
+    const showLoading = !hasLoadedRef.current;
+    fetchDevices(showLoading);
+    hasLoadedRef.current = true;
     const intervalId = setInterval(() => {
       fetchDevices(false);
       fetchUnreadAlertsCount();
