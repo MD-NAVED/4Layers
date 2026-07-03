@@ -307,6 +307,12 @@ def provision_device(
     mac = provision_data.mac_address.strip()
     device = db.query(models.Device).filter(models.Device.mac_address == mac).first()
     if device:
+        # Security Verification: Ensure the device belongs to the current user's home
+        if device.home.owner_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This physical device is registered under another user's account"
+            )
         return {"id": device.id}
 
     # Resolve or create home for current user

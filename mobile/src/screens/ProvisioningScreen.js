@@ -72,6 +72,7 @@ export default function ProvisioningScreen({ navigation }) {
   const [isScanning, setIsScanning] = useState(false);
   const [devicesList, setDevicesList] = useState([]);
   const [statusText, setStatusText] = useState('Idle');
+  const connectedDeviceIdRef = useRef(null);
   
   // Wi-Fi and setup states
   const [ssid, setSsid] = useState('');
@@ -86,6 +87,11 @@ export default function ProvisioningScreen({ navigation }) {
   // Clean up BLE manager on unmount
   useEffect(() => {
     return () => {
+      manager.stopDeviceScan();
+      if (connectedDeviceIdRef.current) {
+        manager.cancelDeviceConnection(connectedDeviceIdRef.current)
+          .catch((err) => console.warn('[BLE Clean] Cleanup connection cancel failed:', err));
+      }
       manager.destroy();
     };
   }, [manager]);
@@ -142,6 +148,7 @@ export default function ProvisioningScreen({ navigation }) {
 
     try {
       // 1. Connect to BLE device
+      connectedDeviceIdRef.current = selectedDevice.id;
       const connectedDevice = await manager.connectToDevice(selectedDevice.id);
       setStatusText('Connected! Discovering services...');
       await connectedDevice.discoverAllServicesAndCharacteristics();
@@ -187,12 +194,14 @@ export default function ProvisioningScreen({ navigation }) {
       setCurrentStage('DONE');
       
       // Disconnect
+      connectedDeviceIdRef.current = null;
       await manager.cancelDeviceConnection(selectedDevice.id);
       
       Alert.alert('Success', 'Device has been successfully configured and linked to the cloud.', [
         { text: 'OK', onPress: () => navigation.navigate('Home') }
       ]);
     } catch (err) {
+      connectedDeviceIdRef.current = null;
       console.error('[Provisioning] Error:', err);
       setCurrentStage('INPUT');
       setStatusText('Error occurred');

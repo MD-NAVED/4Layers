@@ -14,13 +14,29 @@
     },
     "android": {
       "package": "com.smartnest.app",
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT"
+      ]
     },
     "plugins": [
       [
         "expo-camera",
         {
           "cameraPermission": "Allow SmartNest to access the camera to scan device QR codes."
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Allow SmartNest to connect to your smart switchboard devices."
         }
       ]
     ],
