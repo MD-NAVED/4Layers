@@ -189,8 +189,27 @@ def publish_control_message(node_id: str, state: dict):
     Publish a control message to control a device.
     Runs asynchronously inside a thread pool to avoid blocking FastAPI's async loop.
     """
-    topic = f"home/device/{node_id}/control"
-    payload = json.dumps(state)
+    node_id_to_publish = node_id
+    payload_to_publish = state
+    
+    if "_" in node_id:
+        parts = node_id.rsplit('_', 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            base_node_id = parts[0]
+            channel = int(parts[1])
+            status_val = state.get("status", "OFF")
+            
+            payload_to_publish = {
+                "channel": channel,
+                "status": status_val
+            }
+            if "value" in state:
+                payload_to_publish["value"] = state["value"]
+                
+            node_id_to_publish = base_node_id
+
+    topic = f"home/device/{node_id_to_publish}/control"
+    payload = json.dumps(payload_to_publish)
     try:
         publish_executor.submit(_blocking_publish, topic, payload)
     except Exception as e:

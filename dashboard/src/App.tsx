@@ -115,11 +115,12 @@ export default function App() {
           deviceName: s.device?.name || 'Unknown Device',
           action: s.action?.toLowerCase() === 'on' ? 'on' : 'off',
           time: s.time,
-          days: s.days.split(',').map((d: string) => {
-            const trimmed = d.trim().toLowerCase();
-            if (trimmed === 'daily') return 'daily';
-            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-          }).filter((d: string) => d !== 'daily'),
+          days: s.days.toLowerCase().includes('daily')
+            ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            : s.days.split(',').map((d: string) => {
+                const trimmed = d.trim().toLowerCase();
+                return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+              }),
           enabled: s.enabled
         }));
         setSchedules(formatted);
@@ -308,9 +309,9 @@ export default function App() {
         }
 
         // Dynamically configure local nodes mapping state
-        const uniqueNodes = Array.from(new Set(data.map((d: any) => d.node_id)));
+        const uniqueNodes = Array.from(new Set(data.map((d: any) => d.node_id as string)));
         setNodes(prev => {
-          const updatedNodes = uniqueNodes.map(nodeId => {
+          const updatedNodes = uniqueNodes.map((nodeId: any) => {
             const match = prev.find(n => n.id === nodeId);
             const isAnyDeviceOnline = data.some((d: any) => d.node_id === nodeId && d.is_online);
             return {
