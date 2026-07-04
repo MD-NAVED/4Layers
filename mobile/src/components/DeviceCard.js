@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 const TOKENS = {
-  bg: "#0D0D0D",
-  cardBg: "#1A1A1A",
+  bg: "#131313",
+  cardBg: "#1E1E1E",
   accent: "#22C55E",
-  border: "#262626",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#9CA3AF",
+  border: "rgba(255, 255, 255, 0.05)",
+  textPrimary: "#DFE2F1",
+  textSecondary: "#BBC9CF",
   error: "#EF4444"
 };
 export default function DeviceCard({ device, onToggle, onIncrease, onDecrease }) {

@@ -13,18 +13,12 @@ import apiClient from "../api/client";
 import DeviceCard from "../components/DeviceCard";
 import EnergyChart from "../components/EnergyChart";
 const TOKENS = {
-  bg: "#0D0D0D",
-  // Deep Black
-  cardBg: "#1A1A1A",
-  // Dark Charcoal
+  bg: "#131313",
+  cardBg: "#1E1E1E",
   accent: "#22C55E",
-  // Vibrant Green
-  border: "#262626",
-  // Muted Gray
-  textPrimary: "#FFFFFF",
-  // White
-  textSecondary: "#9CA3AF",
-  // Muted Gray
+  border: "rgba(255, 255, 255, 0.05)",
+  textPrimary: "#DFE2F1",
+  textSecondary: "#BBC9CF",
   error: "#EF4444"
 };
 function CapsuleSwitch({ isEnabled, onToggle }) {
@@ -244,38 +238,92 @@ export default function DashboardScreen({ navigation }) {
   return <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="light-content" backgroundColor={TOKENS.bg} />
       
-      {
-    /* Top Header */
-  }
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Welcome, {username}</Text>
+      {/* Premium Custom Top Bar */}
+      <View style={styles.customHeader}>
+        <View style={styles.logoGroup}>
+          <MaterialCommunityIcons name="layers" size={28} color={TOKENS.accent} />
+          <Text style={styles.logoText}>4Layers</Text>
         </View>
-        <View style={styles.headerRight}>
+        <View style={styles.headerRightGroup}>
+          {/* Connection Status Badge */}
+          <View style={styles.connectionBadge}>
+            <View style={[
+              styles.connectionDot,
+              !hasError ? styles.connectionDotOnline : styles.connectionDotOffline
+            ]} />
+            <Text style={styles.connectionText}>
+              {!hasError ? "Connected" : "Offline"}
+            </Text>
+          </View>
+          {/* Notifications Bell */}
           <TouchableOpacity 
             style={styles.bellButton}
             onPress={() => navigation.navigate("Alerts")}
             accessibilityRole="button"
             accessibilityLabel="System Notifications Center"
           >
-            <MaterialCommunityIcons name="bell-outline" size={24} color={TOKENS.accent} />
+            <MaterialCommunityIcons name="bell-outline" size={24} color={TOKENS.textPrimary} />
             {unreadAlertsCount > 0 && (
               <View style={styles.bellBadge}>
                 <Text style={styles.bellBadgeText}>{unreadAlertsCount}</Text>
               </View>
             )}
           </TouchableOpacity>
-          <View style={styles.activeBadge}>
-            <View style={styles.activeDot} />
-            <Text style={styles.activeBadgeText}>
-              {devices.filter((d) => d.status).length} ON
-            </Text>
-          </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
+        {/* Horizontal Room Scroll Selector Row */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.tabsScrollContainer}
+          style={styles.tabsScrollView}
+        >
+          {ROOM_TABS.map((tab) => {
+            const isActive = selectedRoom === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                activeOpacity={0.7}
+                onPress={() => setSelectedRoom(tab.id)}
+                style={[
+                  styles.tabChip,
+                  isActive ? styles.tabChipActive : styles.tabChipInactive
+                ]}
+                accessibilityRole="tab"
+                accessibilityState={isActive ? { selected: true } : void 0}
+                accessibilityLabel={`${tab.label} view filter`}
+              >
+                <Text 
+                  numberOfLines={1}
+                  style={[
+                    styles.tabChipText,
+                    isActive ? styles.tabChipTextActive : styles.tabChipTextInactive
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+                {isActive && (
+                  <MaterialCommunityIcons 
+                    name="menu-down" 
+                    size={16} 
+                    color="#002112" 
+                    style={{ marginLeft: 2 }}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Greeting section */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingTitle}>Welcome, {username}</Text>
+          <Text style={styles.greetingSubtitle}>All primary systems are online and responsive.</Text>
+        </View>
+
         {/* Real Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statColumn}>
@@ -300,7 +348,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.masterInfoGroup}>
               <MaterialCommunityIcons 
                 name="power" 
-                size={28} 
+                size={32} 
                 color={filteredDevices.some(d => d.status) ? TOKENS.accent : TOKENS.textSecondary} 
               />
               <View style={styles.masterTextGroup}>
@@ -317,51 +365,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
         )}
 
-        {/* Room Tabs Row inside horizontal ScrollView */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Rooms</Text>
+          <Text style={styles.sectionHeader}>SWITCHBOARD CONTROLS</Text>
           <TouchableOpacity onPress={() => navigation.navigate("Rooms")} style={styles.manageLink}>
             <MaterialCommunityIcons name="cog" size={14} color={TOKENS.accent} />
             <Text style={styles.manageLinkText}>Manage</Text>
           </TouchableOpacity>
         </View>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.tabsScrollContainer}
-          style={styles.tabsScrollView}
-        >
-          {ROOM_TABS.map((tab) => {
-            const isActive = selectedRoom === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                activeOpacity={0.7}
-                onPress={() => setSelectedRoom(tab.id)}
-                style={[
-                  styles.tabChip,
-                  !!isActive && styles.tabChipActive
-                ]}
-                accessibilityRole="tab"
-                accessibilityState={isActive ? { selected: true } : void 0}
-                accessibilityLabel={`${tab.label} view filter`}
-              >
-                <Text 
-                  numberOfLines={1}
-                  style={[
-                    styles.tabChipText,
-                    !!isActive && styles.tabChipTextActive
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <Text style={styles.sectionHeader}>Devices</Text>
         
         {isLoading ? <View style={styles.statusBox}>
             <View style={styles.activeDot} />
@@ -550,7 +560,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 32
   },
-  header: {
+  customHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -561,43 +571,70 @@ const styles = StyleSheet.create({
     borderBottomColor: TOKENS.border,
     backgroundColor: TOKENS.bg
   },
-  headerSubtitle: {
-    fontSize: 9,
-    fontFamily: "System",
-    fontWeight: "700",
-    color: TOKENS.accent,
-    letterSpacing: 1.5
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: "System",
-    fontWeight: "bold",
-    color: TOKENS.textPrimary,
-    marginTop: 2
-  },
-  activeBadge: {
+  logoGroup: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(34, 197, 94, 0.15)",
+    gap: 8
+  },
+  logoText: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: TOKENS.accent,
+    letterSpacing: -0.5
+  },
+  headerRightGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  connectionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
     borderWidth: 1,
-    borderColor: TOKENS.accent,
+    borderColor: TOKENS.border,
     borderRadius: 20,
     paddingHorizontal: 10,
-    paddingVertical: 4
+    paddingVertical: 4,
+    gap: 6
   },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4
+  },
+  connectionDotOnline: {
     backgroundColor: TOKENS.accent,
-    marginRight: 6
+    shadowColor: TOKENS.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3
   },
-  activeBadgeText: {
+  connectionDotOffline: {
+    backgroundColor: TOKENS.error
+  },
+  connectionText: {
     fontSize: 10,
-    fontFamily: "System",
-    fontWeight: "800",
-    color: TOKENS.accent,
+    fontWeight: "700",
+    color: TOKENS.textSecondary,
+    textTransform: "uppercase",
     letterSpacing: 0.5
+  },
+  greetingSection: {
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 4
+  },
+  greetingTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: TOKENS.textPrimary
+  },
+  greetingSubtitle: {
+    fontSize: 12,
+    color: TOKENS.textSecondary,
+    marginTop: 4
   },
   sectionHeader: {
     fontSize: 10,
@@ -745,23 +782,28 @@ const styles = StyleSheet.create({
     height: 36,
     paddingHorizontal: 16,
     borderRadius: 18,
-    backgroundColor: TOKENS.cardBg,
     borderWidth: 1.5,
-    borderColor: TOKENS.border,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    flexDirection: "row"
   },
   tabChipActive: {
-    backgroundColor: "rgba(34, 197, 94, 0.15)",
+    backgroundColor: TOKENS.accent,
     borderColor: TOKENS.accent
   },
+  tabChipInactive: {
+    backgroundColor: TOKENS.cardBg,
+    borderColor: TOKENS.border
+  },
   tabChipText: {
-    color: TOKENS.textSecondary,
     fontSize: 12,
     fontWeight: "700"
   },
   tabChipTextActive: {
-    color: TOKENS.accent
+    color: "#002112"
+  },
+  tabChipTextInactive: {
+    color: TOKENS.textSecondary
   },
   gridContainer: {
     flexDirection: "row",

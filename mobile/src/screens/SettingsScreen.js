@@ -20,7 +20,7 @@ const TOKENS = {
   accent: '#22C55E',       // Primary green
   border: 'rgba(255,255,255,0.05)',
   textPrimary: '#dfe2f1',
-  textSecondary: '#9CA3AF',
+  textSecondary: '#BBC9CF',
   error: '#EF4444'
 };
 

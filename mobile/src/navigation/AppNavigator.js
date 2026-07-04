@@ -42,7 +42,7 @@ function HomeStackScreen() {
       <HomeStack.Screen 
         name="DevicesHome" 
         component={DashboardScreen} 
-        options={{ title: '4Layers' }} 
+        options={{ headerShown: false }} 
       />
       <HomeStack.Screen 
         name="AddDevice" 

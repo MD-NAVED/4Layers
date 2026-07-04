@@ -80,7 +80,12 @@ export default function ProvisioningScreen({ navigation }) {
   const [deviceType, setDeviceType] = useState('light'); // light, fan, AC
   
   // Setup flow stages
-  const [currentStage, setCurrentStage] = useState('INPUT'); // INPUT, SCANNING, CONNECTING, PROVISIONING, DONE
+  const [currentStage, setCurrentStage] = useState('ENTRY'); // ENTRY, INPUT, SCANNING, CHECKLIST, DONE
+  const [checklist, setChecklist] = useState({
+    wifiCredentials: 'PENDING', // PENDING, RUNNING, DONE, FAILED
+    applyConnection: 'PENDING',
+    provisionCloud: 'PENDING'
+  });
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
@@ -143,7 +148,12 @@ export default function ProvisioningScreen({ navigation }) {
   const handleDeviceSelect = async (selectedDevice) => {
     manager.stopDeviceScan();
     setIsScanning(false);
-    setCurrentStage('CONNECTING');
+    setCurrentStage('CHECKLIST');
+    setChecklist({
+      wifiCredentials: 'RUNNING',
+      applyConnection: 'PENDING',
+      provisionCloud: 'PENDING'
+    });
     setStatusText(`Connecting to ${selectedDevice.name}...`);
 
     try {
@@ -173,12 +183,25 @@ export default function ProvisioningScreen({ navigation }) {
       const decodedMac = base64Decode(charMac.value).trim();
       setStatusText(`MAC Address Received: ${decodedMac}`);
 
+      // WiFi credentials successfully sent to device
+      setChecklist(prev => ({
+        ...prev,
+        wifiCredentials: 'DONE',
+        applyConnection: 'RUNNING'
+      }));
+
       // 4. Call provision API
-      setCurrentStage('PROVISIONING');
       setStatusText('Registering device node in SmartNest cloud...');
       const provisionResponse = await provisionDevice(decodedMac, deviceType);
       const generatedDeviceId = provisionResponse.id;
       setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
+
+      // WiFi connection and cloud registration succeeded
+      setChecklist(prev => ({
+        ...prev,
+        applyConnection: 'DONE',
+        provisionCloud: 'RUNNING'
+      }));
 
       // 5. Send UUID back to NVS
       setStatusText('Writing UUID configuration to NVS...');
@@ -191,19 +214,24 @@ export default function ProvisioningScreen({ navigation }) {
 
       // 6. Complete provisioning
       setStatusText('Provisioning success!');
+      setChecklist(prev => ({
+        ...prev,
+        provisionCloud: 'DONE'
+      }));
       setCurrentStage('DONE');
       
       // Disconnect
       connectedDeviceIdRef.current = null;
       await manager.cancelDeviceConnection(selectedDevice.id);
-      
-      Alert.alert('Success', 'Device has been successfully configured and linked to the cloud.', [
-        { text: 'OK', onPress: () => navigation.navigate('Home') }
-      ]);
     } catch (err) {
       connectedDeviceIdRef.current = null;
       console.error('[Provisioning] Error:', err);
       setCurrentStage('INPUT');
+      setChecklist({
+        wifiCredentials: 'FAILED',
+        applyConnection: 'FAILED',
+        provisionCloud: 'FAILED'
+      });
       setStatusText('Error occurred');
       Alert.alert('Setup Failed', err.message || 'An error occurred during the hardware pairing handshake.');
     }
@@ -215,13 +243,73 @@ export default function ProvisioningScreen({ navigation }) {
       style={styles.container}
     >
       <View style={styles.appHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (currentStage === 'ENTRY') {
+              navigation.goBack();
+            } else if (currentStage === 'INPUT') {
+              setCurrentStage('ENTRY');
+            } else if (currentStage === 'SCANNING') {
+              manager.stopDeviceScan();
+              setCurrentStage('INPUT');
+            } else {
+              setCurrentStage('ENTRY');
+            }
+          }} 
+          style={styles.backBtn}
+        >
           <MaterialCommunityIcons name="arrow-left" size={24} color={TOKENS.accent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Provision Node</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+        
+        {/* Onboarding Method Entry Selection */}
+        {currentStage === 'ENTRY' && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Add New Device</Text>
+            <Text style={styles.entryIntro}>Choose your preferred pairing method to provision a new switchboard node:</Text>
+            
+            <TouchableOpacity 
+              style={styles.entryMethodButton} 
+              onPress={() => setCurrentStage('INPUT')}
+            >
+              <MaterialCommunityIcons name="bluetooth" size={24} color={TOKENS.accent} />
+              <View style={styles.entryMethodTextGroup}>
+                <Text style={styles.entryMethodTitle}>Provision via Bluetooth (BLE)</Text>
+                <Text style={styles.entryMethodSubtitle}>Recommended pairing for new switchboards</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.entryMethodButton} 
+              onPress={() => Alert.alert("QR Scanner", "QR onboarding is available for pre-registered factory hardware hubs only.")}
+            >
+              <MaterialCommunityIcons name="qrcode-scan" size={24} color={TOKENS.textSecondary} />
+              <View style={styles.entryMethodTextGroup}>
+                <Text style={styles.entryMethodTitle}>Scan Device QR Code</Text>
+                <Text style={styles.entryMethodSubtitle}>Quick pairing scanning option</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.entryMethodButton} 
+              onPress={() => Alert.alert("Manual Setup", "Manual node setup requires root account authentication.")}
+            >
+              <MaterialCommunityIcons name="keyboard-outline" size={24} color={TOKENS.textSecondary} />
+              <View style={styles.entryMethodTextGroup}>
+                <Text style={styles.entryMethodTitle}>Add Node Manually</Text>
+                <Text style={styles.entryMethodSubtitle}>Provide MAC Address config details</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Credentials Form */}
         {currentStage === 'INPUT' && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>1. Config Credentials</Text>
@@ -281,55 +369,156 @@ export default function ProvisioningScreen({ navigation }) {
           </View>
         )}
 
-        {(currentStage === 'SCANNING' || currentStage === 'CONNECTING' || currentStage === 'PROVISIONING' || currentStage === 'DONE') && (
+        {/* Scanning and Bluetooth Scan List */}
+        {currentStage === 'SCANNING' && (
           <View style={styles.card}>
             <Text style={styles.statusHeading}>{statusText}</Text>
-            {currentStage !== 'SCANNING' && currentStage !== 'DONE' && (
-              <ActivityIndicator size="large" color={TOKENS.accent} style={{ marginVertical: 24 }} />
-            )}
-
-            {currentStage === 'SCANNING' && (
-              <View style={styles.listContainer}>
-                {devicesList.length === 0 ? (
-                  <View style={styles.emptyScan}>
-                    <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginBottom: 12 }} />
-                    <Text style={styles.scanText}>Waiting for SmartNest advertisement...</Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    data={devicesList}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.deviceRow}
-                        onPress={() => handleDeviceSelect(item)}
-                      >
-                        <MaterialCommunityIcons name="bluetooth-connect" size={24} color={TOKENS.accent} />
-                        <View style={styles.deviceInfo}>
-                          <Text style={styles.deviceName}>{item.name}</Text>
-                          <Text style={styles.deviceMac}>{item.id}</Text>
-                        </View>
-                        <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
-                      </TouchableOpacity>
-                    )}
-                  />
-                )}
-                
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    manager.stopDeviceScan();
-                    setCurrentStage('INPUT');
-                  }}
-                  style={styles.abortBtn}
-                  textColor={TOKENS.error}
-                >
-                  Abort Scan
-                </Button>
-              </View>
-            )}
+            <View style={styles.listContainer}>
+              {devicesList.length === 0 ? (
+                <View style={styles.emptyScan}>
+                  <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginBottom: 12 }} />
+                  <Text style={styles.scanText}>Waiting for SmartNest advertisement...</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={devicesList}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.deviceRow}
+                      onPress={() => handleDeviceSelect(item)}
+                    >
+                      <MaterialCommunityIcons name="bluetooth-connect" size={24} color={TOKENS.accent} />
+                      <View style={styles.deviceInfo}>
+                        <Text style={styles.deviceName}>{item.name}</Text>
+                        <Text style={styles.deviceMac}>{item.id}</Text>
+                      </View>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+              
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  manager.stopDeviceScan();
+                  setCurrentStage('INPUT');
+                }}
+                style={styles.abortBtn}
+                textColor={TOKENS.error}
+              >
+                Abort Scan
+              </Button>
+            </View>
           </View>
         )}
+
+        {/* Checklist Progress UI */}
+        {currentStage === 'CHECKLIST' && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Provisioning Progress</Text>
+            
+            <View style={styles.checklistContainer}>
+              {/* Step 1: wifiCredentials */}
+              <View style={styles.checkItem}>
+                <View style={[
+                  styles.checkCircle,
+                  checklist.wifiCredentials === 'DONE' && styles.checkCircleDone,
+                  checklist.wifiCredentials === 'RUNNING' && styles.checkCircleRunning
+                ]}>
+                  {checklist.wifiCredentials === 'DONE' ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#002112" />
+                  ) : checklist.wifiCredentials === 'RUNNING' ? (
+                    <ActivityIndicator size="small" color={TOKENS.accent} />
+                  ) : (
+                    <Text style={styles.checkNumber}>1</Text>
+                  )}
+                </View>
+                <Text style={[
+                  styles.checkLabel,
+                  checklist.wifiCredentials === 'RUNNING' && styles.checkLabelActive,
+                  checklist.wifiCredentials === 'DONE' && styles.checkLabelCompleted
+                ]}>
+                  Sending Wi-Fi credentials
+                </Text>
+              </View>
+
+              {/* Step 2: applyConnection */}
+              <View style={styles.checkItem}>
+                <View style={[
+                  styles.checkCircle,
+                  checklist.applyConnection === 'DONE' && styles.checkCircleDone,
+                  checklist.applyConnection === 'RUNNING' && styles.checkCircleRunning
+                ]}>
+                  {checklist.applyConnection === 'DONE' ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#002112" />
+                  ) : checklist.applyConnection === 'RUNNING' ? (
+                    <ActivityIndicator size="small" color={TOKENS.accent} />
+                  ) : (
+                    <Text style={styles.checkNumber}>2</Text>
+                  )}
+                </View>
+                <Text style={[
+                  styles.checkLabel,
+                  checklist.applyConnection === 'RUNNING' && styles.checkLabelActive,
+                  checklist.applyConnection === 'DONE' && styles.checkLabelCompleted
+                ]}>
+                  Applying Wi-Fi connection
+                </Text>
+              </View>
+
+              {/* Step 3: provisionCloud */}
+              <View style={styles.checkItem}>
+                <View style={[
+                  styles.checkCircle,
+                  checklist.provisionCloud === 'DONE' && styles.checkCircleDone,
+                  checklist.provisionCloud === 'RUNNING' && styles.checkCircleRunning
+                ]}>
+                  {checklist.provisionCloud === 'DONE' ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#002112" />
+                  ) : checklist.provisionCloud === 'RUNNING' ? (
+                    <ActivityIndicator size="small" color={TOKENS.accent} />
+                  ) : (
+                    <Text style={styles.checkNumber}>3</Text>
+                  )}
+                </View>
+                <Text style={[
+                  styles.checkLabel,
+                  checklist.provisionCloud === 'RUNNING' && styles.checkLabelActive,
+                  checklist.provisionCloud === 'DONE' && styles.checkLabelCompleted
+                ]}>
+                  Checking provisioning status
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.progressStatusText}>{statusText}</Text>
+          </View>
+        )}
+
+        {/* Done success Stage */}
+        {currentStage === 'DONE' && (
+          <View style={styles.card}>
+            <View style={styles.doneIconContainer}>
+              <MaterialCommunityIcons name="check-circle" size={64} color={TOKENS.accent} />
+            </View>
+            <Text style={styles.doneHeading}>Onboarding Complete!</Text>
+            <Text style={styles.doneMessage}>
+              Your switchboard hardware has been provisioned and registered successfully. 7 device channels have been auto-created!
+            </Text>
+            
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('DevicesHome')}
+              style={styles.primaryBtn}
+              labelStyle={styles.primaryBtnText}
+            >
+              OK
+            </Button>
+          </View>
+        )}
+
       </ScrollView>
 
       <Snackbar
@@ -466,5 +655,104 @@ const styles = StyleSheet.create({
   },
   snackbar: {
     backgroundColor: '#333333'
+  },
+  entryIntro: {
+    fontSize: 13,
+    color: TOKENS.textSecondary,
+    marginBottom: 20,
+    lineHeight: 18
+  },
+  entryMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: TOKENS.surfaceLow,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    marginBottom: 12,
+    gap: 16
+  },
+  entryMethodTextGroup: {
+    flex: 1
+  },
+  entryMethodTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TOKENS.textPrimary
+  },
+  entryMethodSubtitle: {
+    fontSize: 11,
+    color: TOKENS.textSecondary,
+    marginTop: 2
+  },
+  checklistContainer: {
+    marginVertical: 24,
+    gap: 16
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: TOKENS.surfaceLow,
+    borderWidth: 1.5,
+    borderColor: TOKENS.border,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  checkCircleRunning: {
+    borderColor: TOKENS.accent,
+    backgroundColor: 'rgba(34, 197, 94, 0.05)'
+  },
+  checkCircleDone: {
+    borderColor: TOKENS.accent,
+    backgroundColor: TOKENS.accent
+  },
+  checkNumber: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TOKENS.textSecondary
+  },
+  checkLabel: {
+    fontSize: 13,
+    color: TOKENS.textSecondary
+  },
+  checkLabelActive: {
+    color: TOKENS.accent,
+    fontWeight: '700'
+  },
+  checkLabelCompleted: {
+    color: TOKENS.textPrimary
+  },
+  progressStatusText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: TOKENS.textSecondary,
+    textAlign: 'center',
+    marginTop: 8
+  },
+  doneIconContainer: {
+    alignItems: 'center',
+    marginVertical: 20
+  },
+  doneHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: TOKENS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12
+  },
+  doneMessage: {
+    fontSize: 13,
+    color: TOKENS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 24,
+    paddingHorizontal: 12
   }
 });

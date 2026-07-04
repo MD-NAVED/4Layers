@@ -21,7 +21,7 @@ const TOKENS = {
   accent: '#22C55E',
   border: 'rgba(255,255,255,0.05)',
   textPrimary: '#dfe2f1',
-  textSecondary: '#9CA3AF',
+  textSecondary: '#BBC9CF',
   error: '#EF4444'
 };
 
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#131313',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   cardActionBtn: {
     padding: 4,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#131313',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
