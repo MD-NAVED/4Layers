@@ -1,0 +1,21 @@
+# Ignore backend
+backend/
+verify_api.py
+verify_db_migration.py
+mock_device.py
+
+# Ignore other large files/folders
+stitch_iot_mqtt_control_dashboard/
+stitch_iot_mqtt_control_dashboard.zip
+new_app/
+file-history/
+paste-cache/
+*.mp4
+*.tar
+*.zip
+.idea/
+.git/
+node_modules/
+mobile/node_modules/
+.expo/
+mobile/.expo/
