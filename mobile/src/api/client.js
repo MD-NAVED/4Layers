@@ -5,8 +5,8 @@ import Constants from 'expo-constants';
 
 // Toggle local development vs production Render API
 // Set to true to connect the app to the backend server running locally on your computer.
-const USE_LOCAL_BACKEND = false; // Set to true only for local dev 
-const LOCAL_PC_IP = '10.245.153.121'; // Your computer's network IP for phone/emulator connection
+const USE_LOCAL_BACKEND = true; // Set to true only for local dev 
+const LOCAL_PC_IP = '192.168.157.121'; // Your computer's network IP for phone/emulator connection
 
 let baseURL = USE_LOCAL_BACKEND
   ? (Platform.OS === 'web' ? 'http://localhost:8000' : `http://${LOCAL_PC_IP}:8000`)
