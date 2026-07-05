@@ -9,7 +9,8 @@ import {
   Modal,
   Alert,
   Animated,
-  Easing
+  Easing,
+  StatusBar
 } from 'react-native';
 import { Text, TextInput, SegmentedButtons, Snackbar, ActivityIndicator } from 'react-native-paper';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -503,6 +504,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: TOKENS.bg,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollContainer: {
     flexGrow: 1,
