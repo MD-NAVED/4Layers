@@ -3,15 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-const USE_LOCAL_BACKEND = true; // Set to true only for local dev 
-
-// Resolve backend IP dynamically:
-// Android Emulator uses 10.0.2.2 to connect to host computer's localhost.
-// iOS Simulator and Web use localhost / 127.0.0.1.
-const LOCAL_PC_IP = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1';
+const USE_LOCAL_BACKEND = false; // Set to false for production cloud Render backend
 
 let baseURL = USE_LOCAL_BACKEND
-  ? (Platform.OS === 'web' ? 'http://localhost:8000' : `http://${LOCAL_PC_IP}:8000`)
+  ? (Platform.OS === 'web' ? 'http://localhost:8000' : 'http://10.0.2.2:8000')
   : 'https://smartnest-3jr4.onrender.com';
 
 console.log(`[SmartNest API Client] Initialized. Base URL: ${baseURL}`);
