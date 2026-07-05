@@ -650,7 +650,9 @@ export default function ProvisioningScreen({ navigation }) {
         duration={3000}
         style={styles.snackbar}
       >
-        {snackbarMessage}
+        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>
+          {snackbarMessage}
+        </Text>
       </Snackbar>
     </KeyboardAvoidingView>
   );
@@ -705,7 +707,6 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   input: {
-    height: 48,
     backgroundColor: TOKENS.surfaceLow
   },
   segmented: {
@@ -777,7 +778,8 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   snackbar: {
-    backgroundColor: '#333333'
+    backgroundColor: '#B91C1C',
+    borderRadius: 8
   },
   entryIntro: {
     fontSize: 13,
