@@ -79,8 +79,12 @@ export default function ProvisioningScreen({ navigation }) {
   const [wifiPassword, setWifiPassword] = useState('');
   const [deviceType, setDeviceType] = useState('light'); // light, fan, AC
   
+  // Manual onboarding states
+  const [manualMacAddress, setManualMacAddress] = useState('');
+  const [isProvisioningManual, setIsProvisioningManual] = useState(false);
+  
   // Setup flow stages
-  const [currentStage, setCurrentStage] = useState('ENTRY'); // ENTRY, INPUT, SCANNING, CHECKLIST, DONE
+  const [currentStage, setCurrentStage] = useState('ENTRY'); // ENTRY, INPUT, SCANNING, CHECKLIST, DONE, MANUAL
   const [checklist, setChecklist] = useState({
     wifiCredentials: 'PENDING', // PENDING, RUNNING, DONE, FAILED
     applyConnection: 'PENDING',
@@ -104,6 +108,42 @@ export default function ProvisioningScreen({ navigation }) {
   const showToast = (msg) => {
     setSnackbarMessage(msg);
     setShowSnackbar(true);
+  };
+
+  const handleManualProvision = async () => {
+    if (!manualMacAddress.trim()) {
+      Alert.alert('Error', 'Please enter a valid MAC Address / Node ID');
+      return;
+    }
+    if (!deviceType.trim()) {
+      Alert.alert('Error', 'Please enter a device type');
+      return;
+    }
+
+    try {
+      setIsProvisioningManual(true);
+      // Calls apiClient.post('/api/devices/provision', { mac_address: manualMacAddress, type: deviceType })
+      const res = await provisionDevice(manualMacAddress.trim().toUpperCase(), deviceType.trim().toLowerCase());
+      
+      Alert.alert(
+        'Success',
+        `Device provisioned successfully!\nID: ${res.id || 'N/A'}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Go back to devices home
+              navigation.navigate('DevicesHome');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('[Manual Provision] Failed:', error);
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to provision device manually.');
+    } finally {
+      setIsProvisioningManual(false);
+    }
   };
 
   const startScanning = async () => {
@@ -297,9 +337,9 @@ export default function ProvisioningScreen({ navigation }) {
 
             <TouchableOpacity 
               style={styles.entryMethodButton} 
-              onPress={() => Alert.alert("Manual Setup", "Manual node setup requires root account authentication.")}
+              onPress={() => setCurrentStage('MANUAL')}
             >
-              <MaterialCommunityIcons name="keyboard-outline" size={24} color={TOKENS.textSecondary} />
+              <MaterialCommunityIcons name="keyboard-outline" size={24} color={TOKENS.accent} />
               <View style={styles.entryMethodTextGroup}>
                 <Text style={styles.entryMethodTitle}>Add Node Manually</Text>
                 <Text style={styles.entryMethodSubtitle}>Provide MAC Address config details</Text>
@@ -516,6 +556,65 @@ export default function ProvisioningScreen({ navigation }) {
               labelStyle={styles.primaryBtnText}
             >
               OK
+            </Button>
+          </View>
+        )}
+
+        {/* Manual Setup Stage */}
+        {currentStage === 'MANUAL' && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Manual Device Registry</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>MAC Address / Node ID</Text>
+              <TextInput
+                value={manualMacAddress}
+                onChangeText={setManualMacAddress}
+                mode="outlined"
+                textColor="#FFFFFF"
+                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                style={styles.input}
+                placeholder="e.g. AA:BB:CC:DD:EE:FF or ESP32_CHIP_01"
+                placeholderTextColor={TOKENS.textSecondary}
+                autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Device Type</Text>
+              <TextInput
+                value={deviceType}
+                onChangeText={setDeviceType}
+                mode="outlined"
+                textColor="#FFFFFF"
+                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                style={styles.input}
+                placeholder="Enter device type (e.g. light, fan, ac)"
+                placeholderTextColor={TOKENS.textSecondary}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={handleManualProvision}
+              loading={isProvisioningManual}
+              disabled={isProvisioningManual}
+              style={styles.primaryBtn}
+              labelStyle={styles.primaryBtnText}
+              icon="plus"
+            >
+              Add Device Node
+            </Button>
+
+            <Button
+              mode="outlined"
+              onPress={() => setCurrentStage('ENTRY')}
+              disabled={isProvisioningManual}
+              style={styles.abortBtn}
+              textColor={TOKENS.textSecondary}
+            >
+              Cancel
             </Button>
           </View>
         )}
