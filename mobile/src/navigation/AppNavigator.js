@@ -33,9 +33,7 @@ function HomeStackScreen() {
   return (
     <HomeStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.surface },
-        headerTintColor: theme.colors.onSurface,
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerShown: false,
         cardStyle: { backgroundColor: theme.colors.background },
       }}
     >

@@ -345,15 +345,16 @@ export default function ProvisioningScreen({ navigation }) {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Device Type</Text>
-              <SegmentedButtons
+              <TextInput
                 value={deviceType}
-                onValueChange={setDeviceType}
-                buttons={[
-                  { value: 'light', label: 'LIGHT', checkedColor: '#000', style: deviceType === 'light' ? styles.segButtonActive : styles.segButtonInactive },
-                  { value: 'fan', label: 'FAN', checkedColor: '#000', style: deviceType === 'fan' ? styles.segButtonActive : styles.segButtonInactive },
-                  { value: 'ac', label: 'AC', checkedColor: '#000', style: deviceType === 'ac' ? styles.segButtonActive : styles.segButtonInactive }
-                ]}
-                style={styles.segmented}
+                onChangeText={setDeviceType}
+                mode="outlined"
+                textColor="#FFFFFF"
+                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                style={styles.input}
+                placeholder="Enter device type (e.g. light, fan, ac)"
+                placeholderTextColor={TOKENS.textSecondary}
+                autoCapitalize="none"
               />
             </View>
 
