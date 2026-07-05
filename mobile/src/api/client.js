@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Toggle local development vs production Render API
-// Set to true to connect the app to the backend server running locally on your computer.
 const USE_LOCAL_BACKEND = true; // Set to true only for local dev 
-const LOCAL_PC_IP = '127.0.0.1'; // Using 127.0.0.1 to route local traffic over adb reverse USB connection
+
+// Resolve backend IP dynamically:
+// Android Emulator uses 10.0.2.2 to connect to host computer's localhost.
+// iOS Simulator and Web use localhost / 127.0.0.1.
+const LOCAL_PC_IP = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1';
 
 let baseURL = USE_LOCAL_BACKEND
   ? (Platform.OS === 'web' ? 'http://localhost:8000' : `http://${LOCAL_PC_IP}:8000`)
