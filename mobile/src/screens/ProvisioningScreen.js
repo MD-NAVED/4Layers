@@ -7,7 +7,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  FlatList
+  FlatList,
+  Linking
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, Snackbar, SegmentedButtons } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -143,6 +144,19 @@ export default function ProvisioningScreen({ navigation }) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to provision device manually.');
     } finally {
       setIsProvisioningManual(false);
+    }
+  };
+
+  const handleOpenWifiSettings = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        await Linking.sendIntent('android.settings.WIFI_SETTINGS');
+      } else {
+        await Linking.openURL('App-Prefs:root=WIFI');
+      }
+    } catch (error) {
+      console.error('Failed to open Wi-Fi settings:', error);
+      Alert.alert('Error', 'Unable to open Wi-Fi settings. Please open them manually.');
     }
   };
 
@@ -355,7 +369,16 @@ export default function ProvisioningScreen({ navigation }) {
             <Text style={styles.sectionTitle}>1. Config Credentials</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Wi-Fi SSID</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={styles.label}>Wi-Fi SSID</Text>
+                <TouchableOpacity 
+                  onPress={handleOpenWifiSettings} 
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <MaterialCommunityIcons name="wifi" size={16} color={TOKENS.accent} />
+                  <Text style={{ color: TOKENS.accent, fontSize: 12, fontWeight: 'bold' }}>Open Wi-Fi Settings</Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
                 value={ssid}
                 onChangeText={setSsid}
