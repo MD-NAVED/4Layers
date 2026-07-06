@@ -11,7 +11,7 @@
 *   **📱 4Layers (Google Stitch) Mobile Redesign:** Overhauled the React Native application using a premium, dark-mode visual aesthetic with vibrant neon-green accents, glassmorphic cards, custom capsule switches, and strict status-bar safe-area configurations.
 *   **📶 Native Wi-Fi Settings Redirection:** Added an **"Open Wi-Fi Settings"** action during Bluetooth provisioning, allowing users to open their phone's native Wi-Fi panel directly for quick network switching.
 *   **🔌 Custom Device Type Registry:** Replaced rigid segmented buttons with a manual text input for "Device Type", letting users provision custom appliance types (e.g. `light`, `fan`, `ac`, `geyser`, `tv`).
-*   **🔄 True Real-Time Sync:** Web dashboard and mobile app communicate with a single source of truth. Schedule execution and device state changes sync instantly via a high-performance MQTT pipeline.
+*   **🔄 True Real-Time Sync:** Mobile application communicates with a single source of truth. Device state changes and telemetry sync instantly via a high-performance MQTT pipeline.
 *   **🏭 Flash-Once Firmware Architecture:** Supports bulk manufacturing. ESP32 firmware requires zero hardcoding; devices are provisioned dynamically via BLE and get their credentials at runtime.
 *   **🛡️ Anti-Hijacking Security:** Hardware MAC addresses are strictly bound to user accounts on the Supabase PostgreSQL database to prevent unauthorized device claims.
 *   **🧵 Async-Safe MQTT Pipeline:** FastAPI's async event loop is isolated from blocking MQTT client loop operations using thread execution, ensuring server responsiveness.
@@ -50,7 +50,6 @@ SmartNest uses a secure 3-way handshake for onboarding new hardware:
 | **Backend** | Python 3.12, FastAPI, Uvicorn | High-performance async REST API hosted on Render |
 | **Database** | PostgreSQL 15+ (Supabase) | Reliable concurrent storage with custom relational tables |
 | **IoT Protocol** | Paho-MQTT, EMQX Public Broker | Asynchronous device control & telemetry |
-| **Web Dashboard** | React 18, TypeScript, Vanilla CSS | Admin panel, scheduling, power analytics |
 | **Mobile App** | Expo SDK 51, React Native Paper | 4Layers Stitch-designed cross-platform interface |
 | **Hardware Comms** | BLE (react-native-ble-plx) | Secure local device provisioning |
 
@@ -70,10 +69,6 @@ SmartNest/
 │   └── routes/
 │       ├── users.py       # Register, login, and profile APIs
 │       └── devices.py     # Provisioning, control, and room CRUD operations
-├── dashboard/             # React + TypeScript Web Admin Panel
-│   ├── src/
-│   │   ├── App.tsx        # Dashboard root, analytics integration, and grid layout
-│   │   └── components/    # ScheduleManager.tsx, PowerChart.tsx
 ├── mobile/                # React Native Expo Mobile App
 │   ├── src/
 │   │   ├── api/           # client.js (axios setup pointing to Render server)
@@ -113,18 +108,7 @@ SmartNest/
    uvicorn backend.main:app --reload
    ```
 
-### 2. Web Dashboard Setup
-1. Go to the `dashboard/` directory.
-2. Install node packages:
-   ```bash
-   npm install
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-### 3. Mobile App Setup
+### 2. Mobile App Setup
 1. Go to the `mobile/` directory.
 2. Install dependencies:
    ```bash
