@@ -1,42 +1,45 @@
-# 🏠 SmartNest: Production-Ready IoT Home Automation
+# 🏠 4Layers SmartNest: Enterprise IoT Home Automation
 
-**FastAPI | PostgreSQL | React Native | MQTT | ESP32**
+**FastAPI | PostgreSQL (Supabase) | React Native (Expo) | MQTT (EMQX) | ESP32**
 
-SmartNest is a complete, highly scalable, full-stack IoT platform designed to manage smart appliances (Lights, Fans, ACs) in real-time. Built with a focus on bulk manufacturing readiness, thread-safe concurrency, and real-time cross-platform synchronization.
+4Layers SmartNest is a production-ready, full-stack IoT platform designed to manage smart appliances (Lights, Fans, ACs, Outlets) in real-time. Built with a focus on bulk manufacturing, thread-safe asynchronous concurrency, and premium modern UI/UX design.
 
 ---
 
 ## ✨ Key Highlights & Features
 
-*   **🔄 True Real-Time Sync:** Mobile App and Web Dashboard share a single source of truth. Schedules created on the dashboard instantly sync to the backend and execute on hardware.
-*   **🏭 Flash-Once Firmware Architecture:** Supports bulk manufacturing. ESP32 firmware requires zero hardcoding; devices are provisioned dynamically via BLE and get their UUIDs at runtime.
-*   **🛡️ Anti-Hijacking Provisioning:** Hardware MAC addresses are strictly bound to user accounts preventing device theft or cross-account provisioning.
-*   **🧵 Async-Safe MQTT Pipeline:** FastAPI async loop is completely isolated from MQTT blocking I/O using ThreadPoolExecutor, preventing server freezes under heavy load.
-*   **💀 LWT Auto-Offline Tracking:** Implements MQTT Last Will and Testament. If a device loses power, the backend automatically marks it "Offline" in the database and UI.
-*   **📱 Cross-Platform UI:** Material Design 3 (React Native Paper) mobile app with live online/offline status indicators, and a modern React/TypeScript web dashboard.
+*   **📱 4Layers (Google Stitch) Mobile Redesign:** Overhauled the React Native application using a premium, dark-mode visual aesthetic with vibrant neon-green accents, glassmorphic cards, custom capsule switches, and strict status-bar safe-area configurations.
+*   **📶 Native Wi-Fi Settings Redirection:** Added an **"Open Wi-Fi Settings"** action during Bluetooth provisioning, allowing users to open their phone's native Wi-Fi panel directly for quick network switching.
+*   **🔌 Custom Device Type Registry:** Replaced rigid segmented buttons with a manual text input for "Device Type", letting users provision custom appliance types (e.g. `light`, `fan`, `ac`, `geyser`, `tv`).
+*   **🔄 True Real-Time Sync:** Web dashboard and mobile app communicate with a single source of truth. Schedule execution and device state changes sync instantly via a high-performance MQTT pipeline.
+*   **🏭 Flash-Once Firmware Architecture:** Supports bulk manufacturing. ESP32 firmware requires zero hardcoding; devices are provisioned dynamically via BLE and get their credentials at runtime.
+*   **🛡️ Anti-Hijacking Security:** Hardware MAC addresses are strictly bound to user accounts on the Supabase PostgreSQL database to prevent unauthorized device claims.
+*   **🧵 Async-Safe MQTT Pipeline:** FastAPI's async event loop is isolated from blocking MQTT client loop operations using thread execution, ensuring server responsiveness.
+*   **💀 LWT Auto-Offline Tracking:** Implements MQTT Last Will and Testament. If a device loses power, the backend automatically sets it "Offline" in the database and updates all connected client UIs.
 
 ---
 
-## 🏗️ System Architecture (The Provisioning Flow)
+## 🏗️ System Architecture & Connection Flow
 
 SmartNest uses a secure 3-way handshake for onboarding new hardware:
 
 ```text
-[ ESP32 Device ]                       [ Mobile App (BLE) ]                      [ FastAPI Backend ]
+[ ESP32 Device ]                       [ Mobile App (BLE) ]                      [ FastAPI Backend (Render) ]
       |                                       |                                       |
       |-- 1. Broadcasts BLE "SmartNest" ----->|                                       |
-      |                                       |-- 2. Sends Wi-Fi Credentials -------->|
-      |<-- 3. Receives Wi-Fi -----------------|                                       |
-      |                                       |-- 4. Sends Device MAC Address ------>|
-      |                                       |<-- 5. Returns Secure Device UUID ----|
-      |<-- 6. Receives Device UUID ------------|                                       |
+      |                                       |-- 2. Redirects to System Wi-Fi settings|
+      |                                       |      to connect/select network        |
+      |                                       |                                       |
+      |                                       |-- 3. Transmits SSID & Password over   |
+      |<-- 4. Receives Wi-Fi credentials -----|      BLE characteristics              |
+      |                                       |                                       |
+      |                                       |-- 5. Submits MAC Address & Type ----->|
+      |                                       |<-- 6. Confirms registry & response ---|
       |                                                                               |
-      |-- 7. Connects to Wi-Fi & MQTT Broker (broker.emqx.io) ----------------------->|
-      |-- 8. Subscribes to: smartnest/devices/{UUID}/command ------------------------->|
-      |-- 9. Publishes state to: smartnest/devices/{UUID}/status -------------------->|
+      |-- 7. Connects to local Wi-Fi Router & EMQX MQTT Broker (broker.emqx.io) ----->|
+      |-- 8. Subscribes to: smartnest/devices/{NodeID}/control ---------------------->|
+      |-- 9. Publishes confirmation to: smartnest/devices/{NodeID}/status ----------->|
 ```
-
-**Result:** Device is now registered in PostgreSQL and actively listening for commands.
 
 ---
 
@@ -44,11 +47,11 @@ SmartNest uses a secure 3-way handshake for onboarding new hardware:
 
 | Component | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Backend** | Python 3.12, FastAPI, Uvicorn | High-performance async REST API |
-| **Database** | PostgreSQL 15+, SQLAlchemy ORM | Reliable concurrent data storage |
-| **IoT Protocol** | Paho-MQTT (v1), EMQX Cloud | Asynchronous device control & telemetry |
-| **Web Dashboard** | React 18, TypeScript, Tailwind CSS | Admin panel, scheduling, analytics |
-| **Mobile App** | Expo SDK 51, React Native Paper | Cross-platform user interface |
+| **Backend** | Python 3.12, FastAPI, Uvicorn | High-performance async REST API hosted on Render |
+| **Database** | PostgreSQL 15+ (Supabase) | Reliable concurrent storage with custom relational tables |
+| **IoT Protocol** | Paho-MQTT, EMQX Public Broker | Asynchronous device control & telemetry |
+| **Web Dashboard** | React 18, TypeScript, Vanilla CSS | Admin panel, scheduling, power analytics |
+| **Mobile App** | Expo SDK 51, React Native Paper | 4Layers Stitch-designed cross-platform interface |
 | **Hardware Comms** | BLE (react-native-ble-plx) | Secure local device provisioning |
 
 ---
@@ -58,27 +61,25 @@ SmartNest uses a secure 3-way handshake for onboarding new hardware:
 ```text
 SmartNest/
 ├── backend/
-│   ├── main.py            # FastAPI entry, Lifespan hooks, Scheduled Jobs
-│   ├── database.py        # PostgreSQL engine & async session setup
-│   ├── mqtt.py            # Thread-safe MQTT client, LWT, JSON validation
-│   ├── models.py          # SQLAlchemy schemas (Users, Devices, Schedules, Alerts)
-│   ├── schemas.py         # Pydantic request/response models
-│   ├── auth.py            # JWT generation & Bcrypt hashing
+│   ├── main.py            # FastAPI app entry, lifespan hooks, and scheduler
+│   ├── database.py        # SQLAlchemy postgres engine & async sessions
+│   ├── mqtt.py            # Thread-safe MQTT client, LWT listener, and state sync
+│   ├── models.py          # SQLAlchemy models (Users, Devices, Rooms, Schedules, Alerts)
+│   ├── schemas.py         # Pydantic request/response validation schemas
+│   ├── auth.py            # JWT authentication & bcrypt password hashing
 │   └── routes/
-│       ├── users.py       # Register, login, profile APIs
-│       └── devices.py     # CRUD, Provisioning API, Control APIs
-├── dashboard/             # React + TypeScript Web Admin
+│       ├── users.py       # Register, login, and profile APIs
+│       └── devices.py     # Provisioning, control, and room CRUD operations
+├── dashboard/             # React + TypeScript Web Admin Panel
 │   ├── src/
-│   │   ├── App.tsx        # Main dashboard, API polling, Schedule/Alert sync
-│   │   └── ...
-├── mobile/                # React Native Expo App
+│   │   ├── App.tsx        # Dashboard root, analytics integration, and grid layout
+│   │   └── components/    # ScheduleManager.tsx, PowerChart.tsx
+├── mobile/                # React Native Expo Mobile App
 │   ├── src/
-│   │   ├── api/           # Axios client with JWT interceptors
-│   │   ├── screens/       # ProvisioningScreen.js (BLE flow), HomeScreen.js
-│   │   └── components/    # DeviceCard.js (Live status dots)
-│   └── app.json           # Expo config & Android BLE permissions
-├── .env.example           # Environment variables template
-└── requirements.txt       # Python dependencies (asyncpg, psycopg2, etc.)
+│   │   ├── api/           # client.js (axios setup pointing to Render server)
+│   │   ├── screens/       # ProvisioningScreen.js (BLE & Manual), DashboardScreen.js
+│   │   └── navigation/    # AppNavigator.js (Custom green header stack)
+└── app.json               # Expo configuration & BLE permissions
 ```
 
 ---
@@ -87,80 +88,63 @@ SmartNest/
 
 ### User Routes (`/api/users`)
 *   `POST /register` - Create a new account
-*   `POST /login` - Get JWT token
-*   `GET /me` - Get current user profile
+*   `POST /login` - Retrieve JWT token
+*   `GET /me` - Fetch authenticated user profile details
 
-### Device Routes (`/api/devices`)
-*   `POST /provision` - Secure provisioning endpoint (Validates MAC ownership)
-*   `GET /` - List all user devices with live `is_online` status
-*   `POST /{device_id}/control` - Send MQTT command (Optimistic UI)
-*   `DELETE /{device_id}` - Remove device
-
-### Schedule & Alert Routes (Synced across Mobile & Dashboard)
-*   `GET /api/schedules` - Fetch active automation rules
-*   `POST /api/schedules` - Create a new schedule (Fires via Backend Cron)
-*   `PATCH /api/schedules/{id}` - Toggle schedule enabled/disabled
-*   `DELETE /api/schedules/{id}` - Remove schedule
-*   `GET /api/alerts` - Fetch system/device alerts
-*   `DELETE /api/alerts/{id}` - Dismiss specific alert
-*   `DELETE /api/alerts` - Clear all alerts
+### Device & Room Routes (`/api/devices`)
+*   `POST /provision` - Secure BLE provisioning endpoint (registers MAC & device channels)
+*   `GET /` - List all registered user devices with live `is_online` status
+*   `POST /{device_id}/control` - Send MQTT state commands to hardware relays
+*   `DELETE /rooms/{room_id}` - Delete room and cascade delete associated devices
 
 ---
 
-## 🚀 Local Setup & Installation
-
-### Prerequisites
-*   Node.js & npm
-*   Python 3.12+
-*   PostgreSQL Database running locally or remotely
+## 🚀 Installation & Local Run
 
 ### 1. Backend Setup
-```bash
-# Clone the repo
-git clone https://github.com/MD-NAVED/SmartNest.git
-cd SmartNest
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your PostgreSQL URL and JWT Secret
-
-# Install Python dependencies
-pip install -r backend/requirements.txt
-
-# Run database migrations (or let SQLAlchemy create tables on first run)
-# Start the FastAPI server
-uvicorn backend.main:app --reload
-```
+1. Clone the repository and navigate to the project directory.
+2. Copy `.env.example` to `.env` and fill in your Supabase Postgres database connection string and JWT secret.
+3. Install dependencies:
+   ```bash
+   pip install -r backend/requirements.txt
+   ```
+4. Run the FastAPI development server:
+   ```bash
+   uvicorn backend.main:app --reload
+   ```
 
 ### 2. Web Dashboard Setup
-```bash
-cd dashboard
-npm install
-npm run dev
-```
+1. Go to the `dashboard/` directory.
+2. Install node packages:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
 ### 3. Mobile App Setup
-```bash
-cd mobile
-npm install
-# Run on physical device (Required for BLE testing)
-npx expo start
-```
+1. Go to the `mobile/` directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run on a simulator or physical testing device:
+   ```bash
+   npx expo start
+   ```
 
 ---
 
-## 🤝 Contributing & Hardware Integration
+## 🤝 Hardware Integration Guidelines
 
-If you are integrating custom hardware (ESP32/ESP8266), please refer to the Hardware Integration Guidelines.
-
-**Key rules for Firmware:**
-*   Do not hardcode Device IDs. Read from NVS.
-*   Implement BLE provisioning to accept Wi-Fi, MAC, and Device UUID.
-*   Use QoS 1 for Command subscriptions and QoS 0 for Status publishing.
-*   Implement LWT (`{"status": "OFFLINE"}`) on MQTT connect.
+When connecting custom hardware (like an ESP32), follow these rules:
+1. **No Hardcoded UUIDs:** Read credentials from NVS (Non-volatile storage) written during BLE provisioning.
+2. **QoS Levels:** Use QoS 1 for Commands subscription to guarantee delivery, and QoS 0 for Status logs.
+3. **Last Will and Testament (LWT):** Configure LWT message `{"is_online": false}` on topic `smartnest/devices/{NodeID}/status` so the backend knows when power is disconnected.
 
 ---
 
 ## 📄 License
-
 This project is licensed under the MIT License - see the LICENSE file for details.
