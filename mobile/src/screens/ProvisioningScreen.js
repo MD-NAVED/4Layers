@@ -82,6 +82,7 @@ export default function ProvisioningScreen({ navigation }) {
   // Wi-Fi and setup states
   const [ssid, setSsid] = useState('');
   const [wifiPassword, setWifiPassword] = useState('');
+  const [showWifiInputs, setShowWifiInputs] = useState(true);
   const [deviceType, setDeviceType] = useState('light'); // light, fan, AC
   
   // Manual onboarding states
@@ -108,7 +109,14 @@ export default function ProvisioningScreen({ navigation }) {
       }
       manager.destroy();
     };
-  }, [manager]);  // Auto-detect connected Wi-Fi SSID and retrieve saved password when credentials input stage is active
+  }, [manager]);
+
+  const showToast = (msg) => {
+    setSnackbarMessage(msg);
+    setShowSnackbar(true);
+  };
+  
+  // Auto-detect connected Wi-Fi SSID and retrieve saved password when credentials input stage is active
   useEffect(() => {
     if (currentStage === 'INPUT') {
       const checkWifiSsid = async () => {
@@ -137,26 +145,33 @@ export default function ProvisioningScreen({ navigation }) {
                     const savedPasswords = JSON.parse(savedPasswordsStr);
                     if (savedPasswords[detectedSsid]) {
                       setWifiPassword(savedPasswords[detectedSsid]);
+                      setShowWifiInputs(false); // Hide inputs by default since password is saved
+                    } else {
+                      setShowWifiInputs(true);
                     }
+                  } else {
+                    setShowWifiInputs(true);
                   }
                 } catch (e) {
                   console.warn('[AsyncStorage] Error reading wifi passwords:', e);
+                  setShowWifiInputs(true);
                 }
+              } else {
+                setShowWifiInputs(true);
               }
+            } else {
+              setShowWifiInputs(true);
             }
           });
         } catch (err) {
           console.warn('[NetInfo] Failed to read current WiFi SSID:', err);
+          setShowWifiInputs(true);
         }
       };
       
       checkWifiSsid();
     }
   }, [currentStage]);
-  const showToast = (msg) => {
-    setSnackbarMessage(msg);
-    setShowSnackbar(true);
-  };
 
   const handleManualProvision = async () => {
     if (!manualMacAddress.trim()) {
@@ -456,43 +471,64 @@ export default function ProvisioningScreen({ navigation }) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>1. Config Credentials</Text>
             
-            <View style={styles.inputGroup}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={styles.label}>Wi-Fi SSID</Text>
+            {showWifiInputs ? (
+              <>
+                <View style={styles.inputGroup}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={styles.label}>Wi-Fi SSID</Text>
+                    <TouchableOpacity 
+                      onPress={handleOpenWifiSettings} 
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    >
+                      <MaterialCommunityIcons name="wifi" size={16} color={TOKENS.accent} />
+                      <Text style={{ color: TOKENS.accent, fontSize: 12, fontWeight: 'bold' }}>Open Wi-Fi Settings</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    value={ssid}
+                    onChangeText={setSsid}
+                    mode="outlined"
+                    textColor="#FFFFFF"
+                    theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                    style={styles.input}
+                    placeholder="Enter router SSID"
+                    placeholderTextColor={TOKENS.textSecondary}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Wi-Fi Password</Text>
+                  <TextInput
+                    value={wifiPassword}
+                    onChangeText={setWifiPassword}
+                    mode="outlined"
+                    secureTextEntry
+                    textColor="#FFFFFF"
+                    theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                    style={styles.input}
+                    placeholder="Enter router password"
+                    placeholderTextColor={TOKENS.textSecondary}
+                  />
+                </View>
+              </>
+            ) : (
+              <View style={styles.connectedNetworkContainer}>
+                <View style={styles.connectedNetworkHeader}>
+                  <MaterialCommunityIcons name="wifi" size={28} color={TOKENS.accent} />
+                  <View style={styles.connectedNetworkTextGroup}>
+                    <Text style={styles.connectedNetworkLabel}>Target Wi-Fi Network</Text>
+                    <Text style={styles.connectedNetworkValue}>{ssid || 'Connected'}</Text>
+                  </View>
+                </View>
                 <TouchableOpacity 
-                  onPress={handleOpenWifiSettings} 
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  style={styles.changeNetworkButton}
+                  onPress={() => setShowWifiInputs(true)}
                 >
-                  <MaterialCommunityIcons name="wifi" size={16} color={TOKENS.accent} />
-                  <Text style={{ color: TOKENS.accent, fontSize: 12, fontWeight: 'bold' }}>Open Wi-Fi Settings</Text>
+                  <MaterialCommunityIcons name="cog-outline" size={16} color={TOKENS.accent} />
+                  <Text style={styles.changeNetworkButtonText}>Change Wi-Fi or Password</Text>
                 </TouchableOpacity>
               </View>
-              <TextInput
-                value={ssid}
-                onChangeText={setSsid}
-                mode="outlined"
-                textColor="#FFFFFF"
-                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                style={styles.input}
-                placeholder="Enter router SSID"
-                placeholderTextColor={TOKENS.textSecondary}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Wi-Fi Password</Text>
-              <TextInput
-                value={wifiPassword}
-                onChangeText={setWifiPassword}
-                mode="outlined"
-                secureTextEntry
-                textColor="#FFFFFF"
-                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                style={styles.input}
-                placeholder="Enter router password"
-                placeholderTextColor={TOKENS.textSecondary}
-              />
-            </View>
+            )}
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Device Type</Text>
@@ -991,5 +1027,51 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 24,
     paddingHorizontal: 12
+  },
+  connectedNetworkContainer: {
+    backgroundColor: TOKENS.surfaceLow,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    marginBottom: 20
+  },
+  connectedNetworkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12
+  },
+  connectedNetworkTextGroup: {
+    flex: 1
+  },
+  connectedNetworkLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: TOKENS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2
+  },
+  connectedNetworkValue: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: TOKENS.textPrimary
+  },
+  changeNetworkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+    borderRadius: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.02)'
+  },
+  changeNetworkButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TOKENS.accent
   }
 });
