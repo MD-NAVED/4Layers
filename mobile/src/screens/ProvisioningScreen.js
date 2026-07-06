@@ -16,6 +16,7 @@ import { Text, TextInput, Button, ActivityIndicator, Snackbar, SegmentedButtons 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BleManager } from 'react-native-ble-plx';
 import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { provisionDevice } from '../api/client';
 
 const TOKENS = {
@@ -107,9 +108,7 @@ export default function ProvisioningScreen({ navigation }) {
       }
       manager.destroy();
     };
-  }, [manager]);
-
-  // Auto-detect connected Wi-Fi SSID when credentials input stage is active
+  }, [manager]);  // Auto-detect connected Wi-Fi SSID and retrieve saved password when credentials input stage is active
   useEffect(() => {
     if (currentStage === 'INPUT') {
       const checkWifiSsid = async () => {
@@ -125,12 +124,24 @@ export default function ProvisioningScreen({ navigation }) {
             }
           }
           
-          NetInfo.fetch().then((state) => {
+          NetInfo.fetch().then(async (state) => {
             if (state.type === 'wifi' && state.details && state.details.ssid) {
-              console.log('[NetInfo] Auto-detected SSID:', state.details.ssid);
-              // Filter out "<unknown ssid>" which Android sometimes returns if permissions aren't fully resolved yet
-              if (state.details.ssid !== '<unknown ssid>') {
-                setSsid(state.details.ssid);
+              const detectedSsid = state.details.ssid;
+              if (detectedSsid !== '<unknown ssid>') {
+                setSsid(detectedSsid);
+                
+                // Read saved password for this detected SSID from AsyncStorage
+                try {
+                  const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords');
+                  if (savedPasswordsStr) {
+                    const savedPasswords = JSON.parse(savedPasswordsStr);
+                    if (savedPasswords[detectedSsid]) {
+                      setWifiPassword(savedPasswords[detectedSsid]);
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[AsyncStorage] Error reading wifi passwords:', e);
+                }
               }
             }
           });
@@ -142,7 +153,6 @@ export default function ProvisioningScreen({ navigation }) {
       checkWifiSsid();
     }
   }, [currentStage]);
-
   const showToast = (msg) => {
     setSnackbarMessage(msg);
     setShowSnackbar(true);
@@ -201,6 +211,16 @@ export default function ProvisioningScreen({ navigation }) {
     if (!ssid.trim() || !wifiPassword.trim()) {
       showToast('Please enter your Wi-Fi SSID and Password.');
       return;
+    }
+
+    // Save this password for the SSID locally in AsyncStorage
+    try {
+      const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords') || '{}';
+      const savedPasswords = JSON.parse(savedPasswordsStr);
+      savedPasswords[ssid.trim()] = wifiPassword.trim();
+      await AsyncStorage.setItem('@SmartNest:wifi_passwords', JSON.stringify(savedPasswords));
+    } catch (e) {
+      console.warn('[AsyncStorage] Error saving wifi password:', e);
     }
 
     if (Platform.OS === 'android') {
