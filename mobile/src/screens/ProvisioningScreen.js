@@ -15,6 +15,7 @@ import {
 import { Text, TextInput, Button, ActivityIndicator, Snackbar, SegmentedButtons } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BleManager } from 'react-native-ble-plx';
+import NetInfo from '@react-native-community/netinfo';
 import { provisionDevice } from '../api/client';
 
 const TOKENS = {
@@ -107,6 +108,40 @@ export default function ProvisioningScreen({ navigation }) {
       manager.destroy();
     };
   }, [manager]);
+
+  // Auto-detect connected Wi-Fi SSID when credentials input stage is active
+  useEffect(() => {
+    if (currentStage === 'INPUT') {
+      const checkWifiSsid = async () => {
+        try {
+          if (Platform.OS === 'android') {
+            const hasLocationPermission = await PermissionsAndroid.check(
+              PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            );
+            if (!hasLocationPermission) {
+              await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+              );
+            }
+          }
+          
+          NetInfo.fetch().then((state) => {
+            if (state.type === 'wifi' && state.details && state.details.ssid) {
+              console.log('[NetInfo] Auto-detected SSID:', state.details.ssid);
+              // Filter out "<unknown ssid>" which Android sometimes returns if permissions aren't fully resolved yet
+              if (state.details.ssid !== '<unknown ssid>') {
+                setSsid(state.details.ssid);
+              }
+            }
+          });
+        } catch (err) {
+          console.warn('[NetInfo] Failed to read current WiFi SSID:', err);
+        }
+      };
+      
+      checkWifiSsid();
+    }
+  }, [currentStage]);
 
   const showToast = (msg) => {
     setSnackbarMessage(msg);
