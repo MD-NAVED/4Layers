@@ -8,7 +8,9 @@ import {
   Platform,
   Alert,
   FlatList,
-  Linking
+  Linking,
+  StatusBar,
+  PermissionsAndroid
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, Snackbar, SegmentedButtons } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -164,6 +166,37 @@ export default function ProvisioningScreen({ navigation }) {
     if (!ssid.trim() || !wifiPassword.trim()) {
       showToast('Please enter your Wi-Fi SSID and Password.');
       return;
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        if (Platform.Version >= 31) {
+          const granted = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          ]);
+          const scanGranted = granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED;
+          const connectGranted = granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED;
+          const locationGranted = granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+          
+          if (!scanGranted || !connectGranted || !locationGranted) {
+            Alert.alert('Permission Denied', 'Bluetooth and Location permissions are required to scan for devices.');
+            return;
+          }
+        } else {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Permission Denied', 'Location permission is required to scan for Bluetooth devices.');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[Permissions] Error checking permissions:', err);
+        return;
+      }
     }
 
     setDevicesList([]);
@@ -440,8 +473,31 @@ export default function ProvisioningScreen({ navigation }) {
             <View style={styles.listContainer}>
               {devicesList.length === 0 ? (
                 <View style={styles.emptyScan}>
-                  <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginBottom: 12 }} />
-                  <Text style={styles.scanText}>Waiting for SmartNest advertisement...</Text>
+                  {isScanning ? (
+                    <>
+                      <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginBottom: 12 }} />
+                      <Text style={styles.scanText}>Waiting for SmartNest advertisement...</Text>
+                    </>
+                  ) : (
+                    <View style={{ alignItems: 'center', width: '100%', paddingHorizontal: 12 }}>
+                      <MaterialCommunityIcons name="bluetooth-off" size={40} color={TOKENS.textSecondary} style={{ marginBottom: 12 }} />
+                      <Text style={[styles.scanText, { color: TOKENS.error, fontWeight: 'bold', fontSize: 14, textAlign: 'center' }]}>
+                        No SmartNest devices found nearby.
+                      </Text>
+                      <Text style={{ fontSize: 12, color: TOKENS.textSecondary, marginTop: 6, marginBottom: 16, textAlign: 'center', lineHeight: 16 }}>
+                        Ensure your switchboard hardware is powered ON and within range.
+                      </Text>
+                      <Button
+                        mode="contained"
+                        onPress={startScanning}
+                        style={[styles.primaryBtn, { width: '100%', marginBottom: 8 }]}
+                        labelStyle={styles.primaryBtnText}
+                        icon="refresh"
+                      >
+                        Retry Scan
+                      </Button>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <FlatList
@@ -661,7 +717,8 @@ export default function ProvisioningScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TOKENS.bg
+    backgroundColor: TOKENS.bg,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   appHeader: {
     flexDirection: 'row',
