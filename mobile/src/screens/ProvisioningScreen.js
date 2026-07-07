@@ -540,7 +540,7 @@ export default function ProvisioningScreen({ navigation }) {
             >
               <MaterialCommunityIcons name="wifi" size={24} color={TOKENS.accent} />
               <View style={styles.entryMethodTextGroup}>
-                <Text style={styles.entryMethodTitle}>Provision via Wi-Fi Hotspot (Recommended)</Text>
+                <Text style={styles.entryMethodTitle}>Provision via SoftAP (Recommended)</Text>
                 <Text style={styles.entryMethodSubtitle}>Best choice for current SmartNest hardware</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
@@ -674,7 +674,7 @@ export default function ProvisioningScreen({ navigation }) {
                 labelStyle={styles.primaryBtnText}
                 icon="wifi"
               >
-                Connect via Wi-Fi Hotspot
+                Connect via SoftAP
               </Button>
             ) : (
               <Button
