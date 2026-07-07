@@ -80,6 +80,7 @@ export default function ProvisioningScreen({ navigation }) {
   const connectedDeviceIdRef = useRef(null);
   
   // Wi-Fi and setup states
+  const [pairingMethod, setPairingMethod] = useState('WIFI'); // WIFI or BLE
   const [ssid, setSsid] = useState('');
   const [wifiPassword, setWifiPassword] = useState('');
   const [showWifiInputs, setShowWifiInputs] = useState(true);
@@ -302,6 +303,110 @@ export default function ProvisioningScreen({ navigation }) {
     }, 12000);
   };
 
+  const startWifiProvisioning = async () => {
+    if (!ssid.trim() || !wifiPassword.trim()) {
+      showToast('Please enter your Wi-Fi SSID and Password.');
+      return;
+    }
+
+    // Save this password for the SSID locally in AsyncStorage
+    try {
+      const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords') || '{}';
+      const savedPasswords = JSON.parse(savedPasswordsStr);
+      savedPasswords[ssid.trim()] = wifiPassword.trim();
+      await AsyncStorage.setItem('@SmartNest:wifi_passwords', JSON.stringify(savedPasswords));
+    } catch (e) {
+      console.warn('[AsyncStorage] Error saving wifi password:', e);
+    }
+
+    setCurrentStage('CHECKLIST');
+    setChecklist({
+      wifiCredentials: 'RUNNING',
+      applyConnection: 'PENDING',
+      provisionCloud: 'PENDING'
+    });
+    setStatusText('Connecting to local SmartNest Hotspot (192.168.4.1)...');
+
+    try {
+      const localUrl = `http://192.168.4.1/config?ssid=${encodeURIComponent(ssid.trim())}&pass=${encodeURIComponent(wifiPassword.trim())}`;
+      console.log('[WifiProvisioning] Dispatching credentials directly to local ESP32:', localUrl);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      
+      const response = await fetch(localUrl, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Local portal returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('[WifiProvisioning] Local ESP32 response:', data);
+      
+      if (data.status !== 'success' || !data.node_id) {
+        throw new Error(data.message || 'ESP32 failed to save credentials.');
+      }
+      
+      const nodeId = data.node_id;
+      setStatusText(`Credentials saved! Node ID: ${nodeId}. Waiting for device reboot...`);
+      
+      setChecklist(prev => ({
+        ...prev,
+        wifiCredentials: 'DONE',
+        applyConnection: 'RUNNING'
+      }));
+      
+      // Step 2: Applying Wi-Fi Connection
+      // Give the hardware 5 seconds to boot and connect to MQTT
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      setChecklist(prev => ({
+        ...prev,
+        applyConnection: 'DONE',
+        provisionCloud: 'RUNNING'
+      }));
+      
+      // Step 3: Registering on Cloud
+      setStatusText('Registering device node in SmartNest cloud...');
+      const provisionResponse = await provisionDevice(nodeId, deviceType.trim().toLowerCase());
+      const generatedDeviceId = provisionResponse.id;
+      setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
+      
+      setChecklist(prev => ({
+        ...prev,
+        provisionCloud: 'DONE'
+      }));
+      
+      setCurrentStage('DONE');
+    } catch (err) {
+      console.error('[WifiProvisioning] Error:', err);
+      setCurrentStage('INPUT');
+      setChecklist({
+        wifiCredentials: 'FAILED',
+        applyConnection: 'FAILED',
+        provisionCloud: 'FAILED'
+      });
+      setStatusText('Error occurred');
+      
+      Alert.alert(
+        'Connection Failed',
+        'Could not connect to the SmartNest hardware.\n\nInstructions:\n1. Open your phone\'s Wi-Fi settings.\n2. Connect to the "SmartNest-Setup-XXXXXX" network (no password).\n3. Return here and try again.',
+        [
+          { text: 'Open Wi-Fi Settings', onPress: handleOpenWifiSettings },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    }
+  };
+
   const handleDeviceSelect = async (selectedDevice) => {
     manager.stopDeviceScan();
     setIsScanning(false);
@@ -430,12 +535,30 @@ export default function ProvisioningScreen({ navigation }) {
             
             <TouchableOpacity 
               style={styles.entryMethodButton} 
-              onPress={() => setCurrentStage('INPUT')}
+              onPress={() => {
+                setPairingMethod('WIFI');
+                setCurrentStage('INPUT');
+              }}
             >
-              <MaterialCommunityIcons name="bluetooth" size={24} color={TOKENS.accent} />
+              <MaterialCommunityIcons name="wifi" size={24} color={TOKENS.accent} />
+              <View style={styles.entryMethodTextGroup}>
+                <Text style={styles.entryMethodTitle}>Provision via Wi-Fi Hotspot (Recommended)</Text>
+                <Text style={styles.entryMethodSubtitle}>Best choice for current SmartNest hardware</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.entryMethodButton} 
+              onPress={() => {
+                setPairingMethod('BLE');
+                setCurrentStage('INPUT');
+              }}
+            >
+              <MaterialCommunityIcons name="bluetooth" size={24} color={TOKENS.textSecondary} />
               <View style={styles.entryMethodTextGroup}>
                 <Text style={styles.entryMethodTitle}>Provision via Bluetooth (BLE)</Text>
-                <Text style={styles.entryMethodSubtitle}>Recommended pairing for new switchboards</Text>
+                <Text style={styles.entryMethodSubtitle}>Pair using Bluetooth scan</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
             </TouchableOpacity>
@@ -545,15 +668,27 @@ export default function ProvisioningScreen({ navigation }) {
               />
             </View>
 
-            <Button
-              mode="contained"
-              onPress={startScanning}
-              style={styles.primaryBtn}
-              labelStyle={styles.primaryBtnText}
-              icon="bluetooth"
-            >
-              Scan for SmartNest
-            </Button>
+            {pairingMethod === 'WIFI' ? (
+              <Button
+                mode="contained"
+                onPress={startWifiProvisioning}
+                style={styles.primaryBtn}
+                labelStyle={styles.primaryBtnText}
+                icon="wifi"
+              >
+                Connect via Wi-Fi Hotspot
+              </Button>
+            ) : (
+              <Button
+                mode="contained"
+                onPress={startScanning}
+                style={styles.primaryBtn}
+                labelStyle={styles.primaryBtnText}
+                icon="bluetooth"
+              >
+                Scan for SmartNest
+              </Button>
+            )}
           </View>
         )}
 
