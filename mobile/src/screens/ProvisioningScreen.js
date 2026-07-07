@@ -20,13 +20,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { provisionDevice } from '../api/client';
 
 const TOKENS = {
-  bg: '#F3F4F6', // Light gray background
-  surface: '#FFFFFF', // White card surfaces
-  surfaceLow: '#F9FAFB', // Light gray input backgrounds
-  accent: '#6200EE', // Espressif Deep Purple
-  border: '#E5E7EB', // Light grey borders
-  textPrimary: '#1F2937', // Dark text
-  textSecondary: '#6B7280', // Grey text secondary
+  bg: '#131313',
+  surface: '#1E1E1E',
+  surfaceLow: '#18181B',
+  accent: '#22C55E',
+  border: 'rgba(255,255,255,0.05)',
+  textPrimary: '#dfe2f1',
+  textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
 
@@ -518,7 +518,7 @@ export default function ProvisioningScreen({ navigation }) {
           }} 
           style={styles.backBtn}
         >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={TOKENS.accent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Provision Node</Text>
       </View>
@@ -949,7 +949,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 56,
     paddingHorizontal: 16,
-    backgroundColor: '#6200EE' // Espressif Purple Header
+    borderBottomWidth: 1,
+    borderBottomColor: TOKENS.border
   },
   backBtn: {
     marginRight: 16
@@ -957,7 +958,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF' // White text
+    color: TOKENS.textPrimary
   },
   scrollContainer: {
     padding: 16
@@ -1005,7 +1006,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    color: '#002112',
     fontWeight: '800'
   },
   statusHeading: {
@@ -1112,7 +1113,7 @@ const styles = StyleSheet.create({
   },
   checkCircleRunning: {
     borderColor: TOKENS.accent,
-    backgroundColor: 'rgba(98, 0, 238, 0.05)'
+    backgroundColor: 'rgba(34, 197, 94, 0.05)'
   },
   checkCircleDone: {
     borderColor: TOKENS.accent,
