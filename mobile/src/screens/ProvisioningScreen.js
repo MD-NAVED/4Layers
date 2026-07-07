@@ -136,8 +136,10 @@ export default function ProvisioningScreen({ navigation }) {
           NetInfo.fetch().then(async (state) => {
             if (state.type === 'wifi' && state.details && state.details.ssid) {
               const detectedSsid = state.details.ssid;
-              if (detectedSsid !== '<unknown ssid>') {
-                setSsid(detectedSsid);
+              // Clean detected SSID and ensure it is not the ESP32 setup AP itself
+              const cleanSsid = detectedSsid ? detectedSsid.replace(/"/g, '') : '';
+              if (cleanSsid && cleanSsid !== '<unknown ssid>' && !cleanSsid.includes('Setup') && !cleanSsid.includes('SmartNest')) {
+                setSsid(cleanSsid);
                 
                 // Read saved password for this detected SSID from AsyncStorage
                 try {
