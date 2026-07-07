@@ -338,33 +338,58 @@ def provision_device(
         db.commit()
         db.refresh(room)
 
-    # Create new device
+    # Create 7 channels automatically for the switchboard board
     import uuid
-    device_id = uuid.uuid4()
-    new_device = models.Device(
-        id=device_id,
-        name=f"Smart {provision_data.type.capitalize()}",
-        device_type=provision_data.type.lower(),
-        node_id=mac,  # Using MAC address as unique node_id
-        mac_address=mac,
-        home_id=home.id,
-        room_id=room.id,
-        is_online=False,
-        current_state={}
-    )
-    db.add(new_device)
-    db.commit()
-    db.refresh(new_device)
+    channel_configs = [
+        {"suffix": "1", "name": "Switch 1", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "2", "name": "Switch 2", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "3", "name": "Switch 3", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "4", "name": "Switch 4", "type": "light", "state": {"status": "OFF"}},
+        {"suffix": "5", "name": "Fan", "type": "fan", "state": {"status": "OFF", "value": 3}},
+        {"suffix": "6", "name": "LED Strip", "type": "light", "state": {"status": "OFF", "value": 50}},
+        {"suffix": "7", "name": "Master Switch", "type": "outlet", "state": {"status": "OFF"}}
+    ]
 
-    # Log history
-    history_entry = models.DeviceHistory(
-        device_id=new_device.id,
-        change_type="device_created",
-        previous_state=None,
-        new_state={}
-    )
-    db.add(history_entry)
-    db.commit()
+    created_devices = []
+    for cfg in channel_configs:
+        chan_node_id = f"{mac}_{cfg['suffix']}"
+        
+        # Check if this channel already exists in DB to prevent duplicates
+        existing_chan = db.query(models.Device).filter(models.Device.node_id == chan_node_id).first()
+        if existing_chan:
+            created_devices.append(existing_chan)
+            continue
+            
+        chan_name = f"Smart {cfg['name']}"
+        device_id = uuid.uuid4()
+        
+        new_device = models.Device(
+            id=device_id,
+            name=chan_name,
+            device_type=cfg['type'],
+            node_id=chan_node_id,
+            mac_address=mac,
+            home_id=home.id,
+            room_id=room.id,
+            is_online=False,
+            current_state=cfg['state']
+        )
+        db.add(new_device)
+        db.commit()
+        db.refresh(new_device)
 
-    return {"id": new_device.id}
+        # Log history
+        history_entry = models.DeviceHistory(
+            device_id=new_device.id,
+            change_type="device_created",
+            previous_state=None,
+            new_state=cfg['state']
+        )
+        db.add(history_entry)
+        db.commit()
+        
+        created_devices.append(new_device)
+
+    # Return the first channel (Switch 1) to satisfy API schema
+    return {"id": created_devices[0].id if created_devices else uuid.uuid4()}
 

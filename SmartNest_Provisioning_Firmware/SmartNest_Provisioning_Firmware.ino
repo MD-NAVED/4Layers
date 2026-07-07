@@ -26,11 +26,13 @@
  */
 
 #include <WiFi.h>
-#include <WebServer.h>
-#include <DNSServer.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 
 // ESP32 Arduino Core Version 3.x Compatibility Layer
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -78,8 +80,18 @@ char status_topic[100];
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-WebServer server(80);
 Preferences preferences;
+
+// BLE Onboarding Configurations
+#define SERVICE_UUID           "0000ffe0-0000-1000-8000-00805f9b34fb"
+#define WIFI_CHAR_UUID         "0000ffe1-0000-1000-8000-00805f9b34fb"
+#define MAC_CHAR_UUID          "0000ffe2-0000-1000-8000-00805f9b34fb"
+#define DEVICE_ID_CHAR_UUID    "0000ffe3-0000-1000-8000-00805f9b34fb"
+
+bool bleDeviceConnected = false;
+bool shouldReboot = false;
+String receivedSsid = "";
+String receivedPass = "";
 
 unsigned long lastHeartbeat = 0;
 const unsigned long heartbeatInterval = 45000; // telemetry updates every 45s
@@ -163,74 +175,189 @@ void applyHardware() {
 }
 
 // --- Web Server Setup Mode Handler ---
-void handleConfigRoute() {
-  // CORS Headers to allow React Native local fetch requests
-  server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
-  
-  if (server.method() == HTTP_OPTIONS) {
-    server.send(200, "text/plain", "OK");
-    return;
-  }
-
-  String reqSsid = server.arg("ssid");
-  String reqPass = server.arg("pass");
-
-  if (reqSsid.length() > 0) {
-    Serial.printf("[Setup] Received SSID: %s, Pass: %s\n", reqSsid.c_str(), reqPass.c_str());
+// --- Base64 Encoding Helper ---
+String base64Encode(String input) {
+  const char lookup[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  String out = "";
+  int len = input.length();
+  for (int i = 0; i < len; i += 3) {
+    uint8_t c1 = input[i];
+    uint8_t c2 = (i + 1 < len) ? input[i + 1] : 0;
+    uint8_t c3 = (i + 2 < len) ? input[i + 2] : 0;
     
-    // Save to secure flash preferences namespace "wifi"
-    preferences.begin("wifi", false);
-    preferences.putString("ssid", reqSsid);
-    preferences.putString("pass", reqPass);
-    preferences.end();
-
-    // Confirm setup to client
-    StaticJsonDocument<200> reply;
-    reply["status"] = "success";
-    reply["node_id"] = NODE_ID;
-    reply["message"] = "Credentials saved. Board rebooting to connect.";
+    uint8_t byte1 = c1 >> 2;
+    uint8_t byte2 = ((c1 & 3) << 4) | (c2 >> 4);
+    uint8_t byte3 = (i + 1 < len) ? (((c2 & 15) << 2) | (c3 >> 6)) : 64;
+    uint8_t byte4 = (i + 2 < len) ? (c3 & 63) : 64;
     
-    char buffer[256];
-    serializeJson(reply, buffer);
-    server.send(200, "application/json", buffer);
-
-    Serial.println("[Setup] Saved credentials. Rebooting board...");
-    blinkLED(4, 100);
-    delay(1500);
-    ESP.restart();
-  } else {
-    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"SSID is required\"}");
+    out += lookup[byte1];
+    out += lookup[byte2];
+    out += (byte3 == 64) ? '=' : lookup[byte3];
+    out += (byte4 == 64) ? '=' : lookup[byte4];
   }
+  return out;
 }
 
-// --- Start Local Config Portal ---
+// --- Base64 Decoding Helper ---
+String base64Decode(String input) {
+  const String lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  String decoded = "";
+  int in_len = input.length();
+  int i = 0;
+  while (i < in_len) {
+    char c1 = input[i++];
+    if (c1 == '=' || c1 == '\r' || c1 == '\n' || c1 == ' ') continue;
+    char c2 = (i < in_len) ? input[i++] : '=';
+    char c3 = (i < in_len) ? input[i++] : '=';
+    char c4 = (i < in_len) ? input[i++] : '=';
+    
+    int i1 = lookup.indexOf(c1);
+    int i2 = lookup.indexOf(c2);
+    int i3 = lookup.indexOf(c3);
+    int i4 = lookup.indexOf(c4);
+    
+    if (i1 == -1) i1 = 0;
+    if (i2 == -1) i2 = 0;
+    if (i3 == -1) i3 = 0;
+    if (i4 == -1) i4 = 0;
+    
+    char out1 = (char)((i1 << 2) | (i2 >> 4));
+    decoded += out1;
+    if (c3 != '=') {
+      char out2 = (char)(((i2 & 15) << 4) | (i3 >> 2));
+      decoded += out2;
+    }
+    if (c4 != '=') {
+      char out3 = (char)(((i3 & 3) << 6) | i4);
+      decoded += out3;
+    }
+  }
+  return decoded;
+}
+
+// --- BLE Server Callbacks ---
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      bleDeviceConnected = true;
+      Serial.println("[BLE] Phone connected!");
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      bleDeviceConnected = false;
+      Serial.println("[BLE] Phone disconnected. Restarting BLE advertising...");
+      pServer->getAdvertising()->start();
+    }
+};
+
+// --- BLE Wi-Fi Credentials Callback ---
+class WifiWriteCallback: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+      String value = pCharacteristic->getValue().c_str();
+      if (value.length() > 0) {
+        Serial.print("[BLE] Raw WiFi payload received: ");
+        Serial.println(value);
+        
+        String decoded = base64Decode(value);
+        Serial.print("[BLE] Decoded WiFi payload: ");
+        Serial.println(decoded);
+        
+        // Parse JSON
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, decoded);
+        
+        if (error) {
+          Serial.print("[BLE] JSON parse failed: ");
+          Serial.println(error.c_str());
+          return;
+        }
+        
+        const char* reqSsid = doc["ssid"];
+        const char* reqPass = doc["pass"];
+        
+        if (reqSsid && strlen(reqSsid) > 0) {
+          receivedSsid = reqSsid;
+          receivedPass = reqPass ? reqPass : "";
+          
+          Serial.printf("[BLE] Saving credentials. SSID: %s\n", receivedSsid.c_str());
+          
+          preferences.begin("wifi", false);
+          preferences.putString("ssid", receivedSsid);
+          preferences.putString("pass", receivedPass);
+          preferences.end();
+          
+          shouldReboot = true;
+        }
+      }
+    }
+};
+
+// --- BLE Cloud Device UUID Callback ---
+class DeviceIdWriteCallback: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+      String value = pCharacteristic->getValue().c_str();
+      if (value.length() > 0) {
+        String decoded = base64Decode(value);
+        Serial.print("[BLE] Decoded Cloud Device UUID: ");
+        Serial.println(decoded);
+      }
+    }
+};
+
+// --- Start Local Config BLE Server ---
 void startSetupPortal() {
   inSetupMode = true;
   char portalSSID[50];
   snprintf(portalSSID, sizeof(portalSSID), "SmartNest-Setup-%s", NODE_ID + 8);
 
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(portalSSID);
-
-  Serial.println("\n--- [SETUP MODE ACTIVE] ---");
-  Serial.print("1. Connect to WiFi hotspot: ");
+  Serial.println("\n--- [BLE SETUP MODE ACTIVE] ---");
+  Serial.print("BLE Device Name: ");
   Serial.println(portalSSID);
-  Serial.println("2. Setup will post credentials directly from the SmartNest App.");
-  Serial.print("Local Setup IP Address: ");
-  Serial.println(WiFi.softAPIP());
-  Serial.println("---------------------------\n");
+  Serial.println("---------------------------------\n");
 
   // Keep Status LED ON during Setup Mode
   digitalWrite(STATUS_LED, HIGH);
 
-  server.on("/config", handleConfigRoute);
-  server.onNotFound([]() {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", "<h3>SmartNest Setup Active</h3><p>Configure WiFi SSID and Password directly via mobile application setup.</p>");
-  });
-  server.begin();
+  // Initialize BLE Device
+  BLEDevice::init(portalSSID);
+  
+  // Create Server
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  // Create Service
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  // Create Characteristics
+  BLECharacteristic *pWifiChar = pService->createCharacteristic(
+                                         WIFI_CHAR_UUID,
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+  pWifiChar->setCallbacks(new WifiWriteCallback());
+
+  BLECharacteristic *pMacChar = pService->createCharacteristic(
+                                         MAC_CHAR_UUID,
+                                         BLECharacteristic::PROPERTY_READ
+                                       );
+  // Set read value (base64 encoded node ID)
+  String base64Mac = base64Encode(NODE_ID);
+  pMacChar->setValue(base64Mac.c_str());
+
+  BLECharacteristic *pDevIdChar = pService->createCharacteristic(
+                                         DEVICE_ID_CHAR_UUID,
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+  pDevIdChar->setCallbacks(new DeviceIdWriteCallback());
+
+  // Start Service
+  pService->start();
+
+  // Start Advertising
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);  // iPhone connection helper
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
 }
 
 // --- MQTT Commands Handler (Callback) ---
@@ -407,7 +534,13 @@ void setup() {
 
 void loop() {
   if (inSetupMode) {
-    server.handleClient();
+    if (shouldReboot) {
+      Serial.println("[BLE] Rebooting board in 2 seconds...");
+      blinkLED(5, 100);
+      delay(2000);
+      ESP.restart();
+    }
+    delay(10);
     return; // Stay in configuration loop until rebooted
   }
 
