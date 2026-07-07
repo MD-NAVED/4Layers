@@ -257,13 +257,9 @@ class WifiWriteCallback: public BLECharacteristicCallbacks {
         Serial.print("[BLE] Raw WiFi payload received: ");
         Serial.println(value);
         
-        String decoded = base64Decode(value);
-        Serial.print("[BLE] Decoded WiFi payload: ");
-        Serial.println(decoded);
-        
-        // Parse JSON
+        // Parse JSON directly from raw payload
         StaticJsonDocument<256> doc;
-        DeserializationError error = deserializeJson(doc, decoded);
+        DeserializationError error = deserializeJson(doc, value);
         
         if (error) {
           Serial.print("[BLE] JSON parse failed: ");
@@ -296,9 +292,8 @@ class DeviceIdWriteCallback: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       String value = pCharacteristic->getValue().c_str();
       if (value.length() > 0) {
-        String decoded = base64Decode(value);
         Serial.print("[BLE] Decoded Cloud Device UUID: ");
-        Serial.println(decoded);
+        Serial.println(value);
       }
     }
 };
@@ -338,9 +333,8 @@ void startSetupPortal() {
                                          MAC_CHAR_UUID,
                                          BLECharacteristic::PROPERTY_READ
                                        );
-  // Set read value (base64 encoded node ID)
-  String base64Mac = base64Encode(NODE_ID);
-  pMacChar->setValue(base64Mac.c_str());
+  // Set read value (raw node ID)
+  pMacChar->setValue(NODE_ID);
 
   BLECharacteristic *pDevIdChar = pService->createCharacteristic(
                                          DEVICE_ID_CHAR_UUID,
