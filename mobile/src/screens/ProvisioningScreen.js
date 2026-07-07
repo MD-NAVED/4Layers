@@ -337,12 +337,8 @@ export default function ProvisioningScreen({ navigation }) {
       const timeoutId = setTimeout(() => controller.abort(), 6000);
       
       const response = await fetch(localUrl, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
+        method: 'GET',
+        signal: controller.signal
       });
       clearTimeout(timeoutId);
       
