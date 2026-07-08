@@ -84,8 +84,10 @@ const getRoomIcon = (type) => {
   return found ? found.icon : 'home-outline';
 };
 
-export default function ProvisioningScreen({ navigation }) {
-  const [manager] = useState(() => new BleManager());
+export default function ProvisioningScreen({ route, navigation }) {
+  const { homeId, roomId, roomName, roomType, newRoomName: paramNewRoomName, newRoomType: paramNewRoomType } = route.params || {};
+
+  const [manager] = useState(() => Platform.OS !== 'web' ? new BleManager() : null);
   const [isScanning, setIsScanning] = useState(false);
   const [devicesList, setDevicesList] = useState([]);
   const [statusText, setStatusText] = useState('Idle');
@@ -105,12 +107,12 @@ export default function ProvisioningScreen({ navigation }) {
   // Room and Board states
   const [homes, setHomes] = useState([]);
   const [rooms, setRooms] = useState([]);
-  const [selectedHomeId, setSelectedHomeId] = useState(null);
-  const [selectedRoomId, setSelectedRoomId] = useState(''); // selected room UUID or 'NEW'
-  const [newRoomName, setNewRoomName] = useState('');
-  const [newRoomType, setNewRoomType] = useState('living_room');
-  const [boardName, setBoardName] = useState('');
+  const [selectedHomeId, setSelectedHomeId] = useState(homeId || null);
+  const [selectedRoomId, setSelectedRoomId] = useState(roomId || (paramNewRoomName ? 'NEW' : '')); // selected room UUID or 'NEW'
+  const [newRoomName, setNewRoomName] = useState(paramNewRoomName || '');
+  const [newRoomType, setNewRoomType] = useState(paramNewRoomType || 'living_room');
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [boardName, setBoardName] = useState('');
   
   // Setup flow stages
   const [currentStage, setCurrentStage] = useState('ENTRY'); // ENTRY, INPUT, SCANNING, CHECKLIST, DONE, MANUAL
@@ -125,12 +127,14 @@ export default function ProvisioningScreen({ navigation }) {
   // Clean up BLE manager on unmount
   useEffect(() => {
     return () => {
-      manager.stopDeviceScan();
-      if (connectedDeviceIdRef.current) {
-        manager.cancelDeviceConnection(connectedDeviceIdRef.current)
-          .catch((err) => console.warn('[BLE Clean] Cleanup connection cancel failed:', err));
+      if (manager) {
+        manager.stopDeviceScan();
+        if (connectedDeviceIdRef.current) {
+          manager.cancelDeviceConnection(connectedDeviceIdRef.current)
+            .catch((err) => console.warn('[BLE Clean] Cleanup connection cancel failed:', err));
+        }
+        manager.destroy();
       }
-      manager.destroy();
     };
   }, [manager]);
 
@@ -166,7 +170,9 @@ export default function ProvisioningScreen({ navigation }) {
   };
 
   useEffect(() => {
-    fetchHomesAndRooms();
+    if (!roomId && !paramNewRoomName) {
+      fetchHomesAndRooms();
+    }
   }, []);
 
   const showToast = (msg) => {
@@ -174,9 +180,45 @@ export default function ProvisioningScreen({ navigation }) {
     setShowSnackbar(true);
   };
 
-  const renderRoomAndBoardFields = () => {
+  const getTargetRoomDetails = () => {
+    if (roomId && roomId !== 'NEW') {
+      return {
+        name: roomName || 'Selected Room',
+        type: roomType || 'living_room',
+        icon: getRoomIcon(roomType),
+        isNew: false
+      };
+    } else {
+      return {
+        name: paramNewRoomName || 'New Room',
+        type: paramNewRoomType || 'living_room',
+        icon: getRoomIcon(paramNewRoomType),
+        isNew: true
+      };
+    }
+  };
+
+  const renderRoomSummaryAndBoardField = () => {
+    const details = getTargetRoomDetails();
     return (
       <View style={{ marginTop: 16 }}>
+        {/* Destination Room Summary */}
+        <View style={styles.connectedNetworkContainer}>
+          <View style={styles.connectedNetworkHeader}>
+            <View style={{ backgroundColor: TOKENS.accent, width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}>
+              <MaterialCommunityIcons name={details.icon} size={20} color="#002112" />
+            </View>
+            <View style={styles.connectedNetworkTextGroup}>
+              <Text style={[styles.label, { fontSize: 10, marginBottom: 2 }]}>
+                {details.isNew ? 'New Room to Create' : 'Destination Room'}
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: TOKENS.textPrimary }}>
+                {details.name}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Board Custom Name Prefix */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Board Name / Prefix (Optional)</Text>
@@ -191,96 +233,6 @@ export default function ProvisioningScreen({ navigation }) {
             placeholderTextColor={TOKENS.textSecondary}
           />
         </View>
-
-        {/* Room Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Assign to Room</Text>
-          {loadingRooms ? (
-            <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginVertical: 8 }} />
-          ) : (
-            <View style={styles.roomSelectGrid}>
-              {rooms.map((r) => {
-                const isSelected = selectedRoomId === r.id;
-                return (
-                  <TouchableOpacity
-                    key={r.id}
-                    style={[styles.roomSelectItem, isSelected && styles.roomSelectItemActive]}
-                    onPress={() => setSelectedRoomId(r.id)}
-                  >
-                    <MaterialCommunityIcons 
-                      name={getRoomIcon(r.room_type)} 
-                      size={18} 
-                      color={isSelected ? '#002112' : TOKENS.accent} 
-                    />
-                    <Text style={[styles.roomSelectLabel, isSelected && styles.roomSelectLabelActive]}>
-                      {r.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              
-              <TouchableOpacity
-                style={[styles.roomSelectItem, selectedRoomId === 'NEW' && styles.roomSelectItemActive]}
-                onPress={() => setSelectedRoomId('NEW')}
-              >
-                <MaterialCommunityIcons 
-                  name="plus" 
-                  size={18} 
-                  color={selectedRoomId === 'NEW' ? '#002112' : TOKENS.accent} 
-                />
-                <Text style={[styles.roomSelectLabel, selectedRoomId === 'NEW' && styles.roomSelectLabelActive]}>
-                  + New Room
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Create New Room Fields */}
-        {selectedRoomId === 'NEW' && (
-          <View style={styles.newRoomForm}>
-            <Text style={[styles.label, { color: TOKENS.accent }]}>New Room Details</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Room Name</Text>
-              <TextInput
-                value={newRoomName}
-                onChangeText={setNewRoomName}
-                mode="outlined"
-                textColor="#FFFFFF"
-                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                style={styles.input}
-                placeholder="e.g. Living Room, Bedroom 1"
-                placeholderTextColor={TOKENS.textSecondary}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Room Category</Text>
-              <View style={styles.typeGrid}>
-                {ROOM_TYPES.map((type) => {
-                  const isSelected = newRoomType === type.id;
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[styles.typeCard, isSelected && styles.typeCardSelected]}
-                      onPress={() => setNewRoomType(type.id)}
-                    >
-                      <MaterialCommunityIcons 
-                        name={type.icon} 
-                        size={18} 
-                        color={isSelected ? '#002112' : TOKENS.accent} 
-                      />
-                      <Text style={[styles.typeLabel, isSelected && styles.typeLabelSelected]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        )}
       </View>
     );
   };
@@ -401,6 +353,11 @@ export default function ProvisioningScreen({ navigation }) {
   };
 
   const startScanning = async () => {
+    if (Platform.OS === 'web') {
+      showToast('Bluetooth scanning is not supported in the web browser. Please use the Manual Input or Wi-Fi AP Config method.');
+      return;
+    }
+
     if (!ssid.trim() || !wifiPassword.trim()) {
       showToast('Please enter your Wi-Fi SSID and Password.');
       return;
@@ -854,7 +811,7 @@ export default function ProvisioningScreen({ navigation }) {
               />
             </View>
 
-            {renderRoomAndBoardFields()}
+            {renderRoomSummaryAndBoardField()}
 
             {pairingMethod === 'WIFI' ? (
               <Button
@@ -1088,7 +1045,7 @@ export default function ProvisioningScreen({ navigation }) {
               />
             </View>
 
-            {renderRoomAndBoardFields()}
+            {renderRoomSummaryAndBoardField()}
 
             <Button
               mode="contained"

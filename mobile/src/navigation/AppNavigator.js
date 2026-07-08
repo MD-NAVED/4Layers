@@ -22,6 +22,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import RoomsScreen from '../screens/RoomsScreen';
 import SchedulesScreen from '../screens/SchedulesScreen';
 import AlertsScreen from '../screens/AlertsScreen';
+import RoomSelectionScreen from '../screens/RoomSelectionScreen';
 
 const AuthStack = createStackNavigator();
 const HomeStack = createStackNavigator();
@@ -46,6 +47,11 @@ function HomeStackScreen() {
         name="AddDevice" 
         component={AddDeviceScreen} 
         options={{ title: 'Add New Device' }} 
+      />
+      <HomeStack.Screen 
+        name="RoomSelection" 
+        component={RoomSelectionScreen} 
+        options={{ title: 'Select Room' }} 
       />
       <HomeStack.Screen 
         name="Provisioning" 

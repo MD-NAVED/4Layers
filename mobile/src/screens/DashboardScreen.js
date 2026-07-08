@@ -6,7 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Platform
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import apiClient from "../api/client";
@@ -543,7 +544,7 @@ export default function DashboardScreen({ navigation }) {
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate("Provisioning")}
+        onPress={() => navigation.navigate("RoomSelection")}
         accessibilityRole="button"
         accessibilityLabel="Register New Appliance"
       >
@@ -554,7 +555,8 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: TOKENS.bg
+    backgroundColor: TOKENS.bg,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   scrollContainer: {
     paddingHorizontal: 16,
