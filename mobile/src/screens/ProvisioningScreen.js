@@ -17,7 +17,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BleManager } from 'react-native-ble-plx';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { provisionDevice } from '../api/client';
+import apiClient, { provisionDevice } from '../api/client';
 
 const TOKENS = {
   bg: '#131313',
@@ -69,7 +69,19 @@ const base64Decode = (str) => {
       out += String.fromCharCode((buffer >> bits) & 0xff);
     }
   }
-  return out;
+};
+
+const ROOM_TYPES = [
+  { id: 'living_room', label: 'Living Room', icon: 'sofa' },
+  { id: 'kitchen', label: 'Kitchen', icon: 'chef-hat' },
+  { id: 'bedroom', label: 'Bedroom', icon: 'bed' },
+  { id: 'office', label: 'Office/Study', icon: 'laptop' },
+  { id: 'bathroom', label: 'Bathroom', icon: 'shower' }
+];
+
+const getRoomIcon = (type) => {
+  const found = ROOM_TYPES.find(r => r.id === type);
+  return found ? found.icon : 'home-outline';
 };
 
 export default function ProvisioningScreen({ navigation }) {
@@ -89,6 +101,16 @@ export default function ProvisioningScreen({ navigation }) {
   // Manual onboarding states
   const [manualMacAddress, setManualMacAddress] = useState('');
   const [isProvisioningManual, setIsProvisioningManual] = useState(false);
+  
+  // Room and Board states
+  const [homes, setHomes] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [selectedHomeId, setSelectedHomeId] = useState(null);
+  const [selectedRoomId, setSelectedRoomId] = useState(''); // selected room UUID or 'NEW'
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomType, setNewRoomType] = useState('living_room');
+  const [boardName, setBoardName] = useState('');
+  const [loadingRooms, setLoadingRooms] = useState(false);
   
   // Setup flow stages
   const [currentStage, setCurrentStage] = useState('ENTRY'); // ENTRY, INPUT, SCANNING, CHECKLIST, DONE, MANUAL
@@ -112,9 +134,155 @@ export default function ProvisioningScreen({ navigation }) {
     };
   }, [manager]);
 
+  const fetchHomesAndRooms = async () => {
+    try {
+      setLoadingRooms(true);
+      const homesRes = await apiClient.get('/api/homes');
+      setHomes(homesRes.data);
+      
+      let activeHomeId = null;
+      if (homesRes.data && homesRes.data.length > 0) {
+        activeHomeId = homesRes.data[0].id;
+      } else {
+        const createHomeRes = await apiClient.post('/api/homes', { name: 'SmartNest Home' });
+        activeHomeId = createHomeRes.data.id;
+        setHomes([createHomeRes.data]);
+      }
+      setSelectedHomeId(activeHomeId);
+
+      const roomsRes = await apiClient.get(`/api/rooms/home/${activeHomeId}`);
+      setRooms(roomsRes.data);
+      if (roomsRes.data && roomsRes.data.length > 0) {
+        setSelectedRoomId(roomsRes.data[0].id);
+      } else {
+        setSelectedRoomId('NEW');
+      }
+    } catch (err) {
+      console.warn('[ProvisioningScreen] Error loading homes/rooms:', err);
+      showToast('Failed to load rooms list.');
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHomesAndRooms();
+  }, []);
+
   const showToast = (msg) => {
     setSnackbarMessage(msg);
     setShowSnackbar(true);
+  };
+
+  const renderRoomAndBoardFields = () => {
+    return (
+      <View style={{ marginTop: 16 }}>
+        {/* Board Custom Name Prefix */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Board Name / Prefix (Optional)</Text>
+          <TextInput
+            value={boardName}
+            onChangeText={setBoardName}
+            mode="outlined"
+            textColor="#FFFFFF"
+            theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+            style={styles.input}
+            placeholder="e.g. Main Board, TV Panel, Bedside Board"
+            placeholderTextColor={TOKENS.textSecondary}
+          />
+        </View>
+
+        {/* Room Selection */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Assign to Room</Text>
+          {loadingRooms ? (
+            <ActivityIndicator size="small" color={TOKENS.accent} style={{ marginVertical: 8 }} />
+          ) : (
+            <View style={styles.roomSelectGrid}>
+              {rooms.map((r) => {
+                const isSelected = selectedRoomId === r.id;
+                return (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[styles.roomSelectItem, isSelected && styles.roomSelectItemActive]}
+                    onPress={() => setSelectedRoomId(r.id)}
+                  >
+                    <MaterialCommunityIcons 
+                      name={getRoomIcon(r.room_type)} 
+                      size={18} 
+                      color={isSelected ? '#002112' : TOKENS.accent} 
+                    />
+                    <Text style={[styles.roomSelectLabel, isSelected && styles.roomSelectLabelActive]}>
+                      {r.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              
+              <TouchableOpacity
+                style={[styles.roomSelectItem, selectedRoomId === 'NEW' && styles.roomSelectItemActive]}
+                onPress={() => setSelectedRoomId('NEW')}
+              >
+                <MaterialCommunityIcons 
+                  name="plus" 
+                  size={18} 
+                  color={selectedRoomId === 'NEW' ? '#002112' : TOKENS.accent} 
+                />
+                <Text style={[styles.roomSelectLabel, selectedRoomId === 'NEW' && styles.roomSelectLabelActive]}>
+                  + New Room
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Create New Room Fields */}
+        {selectedRoomId === 'NEW' && (
+          <View style={styles.newRoomForm}>
+            <Text style={[styles.label, { color: TOKENS.accent }]}>New Room Details</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Room Name</Text>
+              <TextInput
+                value={newRoomName}
+                onChangeText={setNewRoomName}
+                mode="outlined"
+                textColor="#FFFFFF"
+                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                style={styles.input}
+                placeholder="e.g. Living Room, Bedroom 1"
+                placeholderTextColor={TOKENS.textSecondary}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Room Category</Text>
+              <View style={styles.typeGrid}>
+                {ROOM_TYPES.map((type) => {
+                  const isSelected = newRoomType === type.id;
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[styles.typeCard, isSelected && styles.typeCardSelected]}
+                      onPress={() => setNewRoomType(type.id)}
+                    >
+                      <MaterialCommunityIcons 
+                        name={type.icon} 
+                        size={18} 
+                        color={isSelected ? '#002112' : TOKENS.accent} 
+                      />
+                      <Text style={[styles.typeLabel, isSelected && styles.typeLabelSelected]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+    );
   };
   
   // Auto-detect connected Wi-Fi SSID and retrieve saved password when credentials input stage is active
@@ -188,8 +356,15 @@ export default function ProvisioningScreen({ navigation }) {
 
     try {
       setIsProvisioningManual(true);
-      // Calls apiClient.post('/api/devices/provision', { mac_address: manualMacAddress, type: deviceType })
-      const res = await provisionDevice(manualMacAddress.trim().toUpperCase(), deviceType.trim().toLowerCase());
+      const isNewRoom = selectedRoomId === 'NEW';
+      const res = await provisionDevice(
+        manualMacAddress.trim().toUpperCase(),
+        deviceType.trim().toLowerCase(),
+        boardName,
+        isNewRoom ? null : selectedRoomId,
+        isNewRoom ? newRoomName : null,
+        isNewRoom ? newRoomType : 'living_room'
+      );
       
       Alert.alert(
         'Success',
@@ -373,8 +548,15 @@ export default function ProvisioningScreen({ navigation }) {
       }));
       
       // Step 3: Registering on Cloud
-      setStatusText('Registering device node in SmartNest cloud...');
-      const provisionResponse = await provisionDevice(nodeId, deviceType.trim().toLowerCase());
+      const isNewRoom = selectedRoomId === 'NEW';
+      const provisionResponse = await provisionDevice(
+        nodeId, 
+        deviceType.trim().toLowerCase(),
+        boardName,
+        isNewRoom ? null : selectedRoomId,
+        isNewRoom ? newRoomName : null,
+        isNewRoom ? newRoomType : 'living_room'
+      );
       const generatedDeviceId = provisionResponse.id;
       setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
       
@@ -450,9 +632,15 @@ export default function ProvisioningScreen({ navigation }) {
         applyConnection: 'RUNNING'
       }));
 
-      // 4. Call provision API
-      setStatusText('Registering device node in SmartNest cloud...');
-      const provisionResponse = await provisionDevice(decodedMac, deviceType);
+      const isNewRoom = selectedRoomId === 'NEW';
+      const provisionResponse = await provisionDevice(
+        decodedMac, 
+        deviceType,
+        boardName,
+        isNewRoom ? null : selectedRoomId,
+        isNewRoom ? newRoomName : null,
+        isNewRoom ? newRoomType : 'living_room'
+      );
       const generatedDeviceId = provisionResponse.id;
       setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
 
@@ -665,6 +853,8 @@ export default function ProvisioningScreen({ navigation }) {
                 autoCapitalize="none"
               />
             </View>
+
+            {renderRoomAndBoardFields()}
 
             {pairingMethod === 'WIFI' ? (
               <Button
@@ -897,6 +1087,8 @@ export default function ProvisioningScreen({ navigation }) {
                 autoCapitalize="none"
               />
             </View>
+
+            {renderRoomAndBoardFields()}
 
             <Button
               mode="contained"
@@ -1206,5 +1398,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: TOKENS.accent
+  },
+  roomSelectGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16
+  },
+  roomSelectItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: TOKENS.surfaceLow,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    gap: 8
+  },
+  roomSelectItemActive: {
+    borderColor: TOKENS.accent,
+    backgroundColor: TOKENS.accent
+  },
+  roomSelectLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TOKENS.textSecondary
+  },
+  roomSelectLabelActive: {
+    color: '#002112',
+    fontWeight: '700'
+  },
+  newRoomForm: {
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8
+  },
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4
+  },
+  typeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: TOKENS.surfaceLow,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+    gap: 6
+  },
+  typeCardSelected: {
+    borderColor: TOKENS.accent,
+    backgroundColor: TOKENS.accent
+  },
+  typeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: TOKENS.textSecondary
+  },
+  typeLabelSelected: {
+    color: '#002112',
+    fontWeight: '700'
   }
 });

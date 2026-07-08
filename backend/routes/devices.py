@@ -301,20 +301,11 @@ def provision_device(
 ):
     """
     Check if a device with this MAC address already exists.
-    If yes, returns its UUID.
-    If no, registers a new device node under a default Home and Room for the user.
+    If yes, updates its room and name prefix and returns its UUID.
+    If no, registers a new device node under the specified or default Room for the user.
     """
     mac = provision_data.mac_address.strip()
-    device = db.query(models.Device).filter(models.Device.mac_address == mac).first()
-    if device:
-        # Security Verification: Ensure the device belongs to the current user's home
-        if device.home.owner_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="This physical device is registered under another user's account"
-            )
-        return {"id": device.id}
-
+    
     # Resolve or create home for current user
     home = db.query(models.Home).filter(models.Home.owner_id == current_user.id).first()
     if not home:
@@ -327,19 +318,48 @@ def provision_device(
         db.refresh(home)
 
     # Resolve or create room
-    room = db.query(models.Room).filter(models.Room.home_id == home.id).first()
-    if not room:
-        room = models.Room(
-            name="Control Room",
-            room_type="living_room",
-            home_id=home.id
-        )
-        db.add(room)
-        db.commit()
-        db.refresh(room)
+    resolved_room_id = None
+    if provision_data.room_id:
+        room = db.query(models.Room).filter(
+            models.Room.id == provision_data.room_id,
+            models.Room.home_id == home.id
+        ).first()
+        if room:
+            resolved_room_id = room.id
+            
+    if not resolved_room_id and provision_data.new_room_name:
+        new_name = provision_data.new_room_name.strip()
+        if new_name:
+            room = db.query(models.Room).filter(
+                models.Room.name == new_name,
+                models.Room.home_id == home.id
+            ).first()
+            if not room:
+                room = models.Room(
+                    name=new_name,
+                    room_type=provision_data.new_room_type or "living_room",
+                    home_id=home.id
+                )
+                db.add(room)
+                db.commit()
+                db.refresh(room)
+            resolved_room_id = room.id
 
-    # Create 7 channels automatically for the switchboard board
-    import uuid
+    if not resolved_room_id:
+        room = db.query(models.Room).filter(models.Room.home_id == home.id).first()
+        if not room:
+            room = models.Room(
+                name="Control Room",
+                room_type="living_room",
+                home_id=home.id
+            )
+            db.add(room)
+            db.commit()
+            db.refresh(room)
+        resolved_room_id = room.id
+
+    prefix = provision_data.name.strip() if provision_data.name else ""
+
     channel_configs = [
         {"suffix": "1", "name": "Switch 1", "type": "light", "state": {"status": "OFF"}},
         {"suffix": "2", "name": "Switch 2", "type": "light", "state": {"status": "OFF"}},
@@ -350,6 +370,34 @@ def provision_device(
         {"suffix": "7", "name": "Master Switch", "type": "outlet", "state": {"status": "OFF"}}
     ]
 
+    # Check if this node already exists
+    device = db.query(models.Device).filter(models.Device.mac_address == mac).first()
+    if device:
+        # Security Verification: Ensure the device belongs to the current user's home
+        if device.home.owner_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This physical device is registered under another user's account"
+            )
+        
+        # Update room and name prefix for all 7 channels under this MAC
+        if prefix:
+            for cfg in channel_configs:
+                chan_node_id = f"{mac}_{cfg['suffix']}"
+                new_chan_name = f"{prefix} {cfg['name']}"
+                db.query(models.Device).filter(models.Device.node_id == chan_node_id).update({
+                    models.Device.room_id: resolved_room_id,
+                    models.Device.name: new_chan_name
+                })
+        else:
+            db.query(models.Device).filter(models.Device.mac_address == mac).update({
+                models.Device.room_id: resolved_room_id
+            })
+        db.commit()
+        return {"id": device.id}
+
+    # Create 7 channels automatically for the switchboard board
+    import uuid
     created_devices = []
     for cfg in channel_configs:
         chan_node_id = f"{mac}_{cfg['suffix']}"
@@ -360,7 +408,7 @@ def provision_device(
             created_devices.append(existing_chan)
             continue
             
-        chan_name = f"Smart {cfg['name']}"
+        chan_name = f"{prefix} {cfg['name']}" if prefix else f"Smart {cfg['name']}"
         device_id = uuid.uuid4()
         
         new_device = models.Device(
@@ -370,7 +418,7 @@ def provision_device(
             node_id=chan_node_id,
             mac_address=mac,
             home_id=home.id,
-            room_id=room.id,
+            room_id=resolved_room_id,
             is_online=False,
             current_state=cfg['state']
         )

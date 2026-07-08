@@ -99,6 +99,10 @@ class DeviceResponse(DeviceBase):
 class DeviceProvision(BaseModel):
     mac_address: str = Field(..., min_length=1, description="MAC address of the physical hardware")
     type: str = Field(..., description="Device type, e.g. LIGHT, FAN, AC")
+    name: Optional[str] = Field(None, description="Prefix name to distinguish this board, e.g. Bedside Panel")
+    room_id: Optional[UUID] = None
+    new_room_name: Optional[str] = None
+    new_room_type: Optional[str] = "living_room"
 
 class DeviceControl(BaseModel):
     state: Dict[str, Any] = Field(..., description="JSON representation of desired state updates (e.g. {'status': 'ON'})")

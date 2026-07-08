@@ -59,12 +59,24 @@ apiClient.interceptors.response.use(
   }
 );
 
-export const provisionDevice = async (macAddress, type) => {
+export const provisionDevice = async (macAddress, type, boardName = null, roomId = null, newRoomName = null, newRoomType = 'living_room') => {
   try {
-    const response = await apiClient.post('/api/devices/provision', {
+    const payload = {
       mac_address: macAddress,
       type: type.toUpperCase()
-    });
+    };
+    if (boardName && boardName.trim()) {
+      payload.name = boardName.trim();
+    }
+    if (roomId) {
+      payload.room_id = roomId;
+    }
+    if (newRoomName && newRoomName.trim()) {
+      payload.new_room_name = newRoomName.trim();
+      payload.new_room_type = newRoomType;
+    }
+    
+    const response = await apiClient.post('/api/devices/provision', payload);
     return response.data; // Returns {"id": device_id}
   } catch (error) {
     console.error('[API Client] provisionDevice error:', error);

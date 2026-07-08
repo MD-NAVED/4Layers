@@ -1,7 +1,7 @@
 import uuid
 import datetime
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, text, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from backend.database import Base
 
@@ -52,11 +52,11 @@ class Device(Base):
     room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     home_id = Column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False)
     node_id = Column(String, unique=True, index=True, nullable=False)  # Unique ESP32 Chip ID String
-    mac_address = Column(String, unique=True, index=True, nullable=True)  # Unique hardware MAC address
+    mac_address = Column(String, index=True, nullable=True)  # Hardware MAC address (not unique due to multi-channels)
     name = Column(String, nullable=False)
     device_type = Column(String, nullable=False)  # e.g., "light", "fan", "AC"
     is_online = Column(Boolean, default=False, server_default=text("false"), nullable=False)
-    current_state = Column(JSONB, default={}, server_default=text("'{}'::jsonb"), nullable=False)
+    current_state = Column(JSON, default={}, server_default=text("'{}'"), nullable=False)
     last_seen = Column(DateTime, default=datetime.datetime.utcnow, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, server_default=text("timezone('utc', now())"), nullable=False)
 
@@ -72,8 +72,8 @@ class DeviceHistory(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), default=uuid.uuid4)
     device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
     change_type = Column(String, nullable=False)  # "command_sent", "status_confirmed", "device_created"
-    previous_state = Column(JSONB, nullable=True)
-    new_state = Column(JSONB, nullable=False)
+    previous_state = Column(JSON, nullable=True)
+    new_state = Column(JSON, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, server_default=text("timezone('utc', now())"), nullable=False)
 
     # Relationships

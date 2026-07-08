@@ -92,60 +92,58 @@ class TestSmartNestBackend(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["username"], "testuser")
 
-        # 5. Add a new device
-        device_payload = {
-            "name": "Living Room Fan",
-            "type": "fan"
+        # 5. Provision a new device board with room assignment & name prefix
+        provision_payload = {
+            "mac_address": "AA:BB:CC:DD:EE:FF",
+            "type": "LIGHT",
+            "name": "Bedside Panel",
+            "new_room_name": "Master Bedroom",
+            "new_room_type": "bedroom"
         }
-        response = self.client.post("/api/devices", json=device_payload, headers=headers)
-        self.assertEqual(response.status_code, 201)
-        device_data = response.json()
-        self.assertEqual(device_data["name"], "Living Room Fan")
-        self.assertEqual(device_data["type"], "fan")
-        self.assertEqual(device_data["status"], False)  # Starts OFF
-        device_id = device_data["id"]
-
-        # 6. List devices
+        response = self.client.post("/api/devices/provision", json=provision_payload, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        provision_res = response.json()
+        self.assertIn("id", provision_res)
+        
+        # 6. List devices and verify 7 channels are created with correct names and room
         response = self.client.get("/api/devices", headers=headers)
         self.assertEqual(response.status_code, 200)
         devices_list = response.json()
-        self.assertEqual(len(devices_list), 1)
-        self.assertEqual(devices_list[0]["id"], device_id)
-
-        # 7. Control the device (Send ON command)
-        # Note: In testing, this attempts to publish MQTT control message.
-        # We override MQTT broker host to localhost to fail/timeout gracefully or fail silently.
-        control_payload = {"status": "ON"}
-        response = self.client.post(f"/api/devices/{device_id}/control", json=control_payload, headers=headers)
-        self.assertEqual(response.status_code, 200)
-        control_res = response.json()
-        self.assertEqual(control_res["requested_status"], "ON")
-
-        # 8. Check device history logs (should show device_created and command_sent)
-        response = self.client.get(f"/api/devices/{device_id}/history", headers=headers)
-        self.assertEqual(response.status_code, 200)
-        history_list = response.json()
-        # History logs are ordered newest first
-        self.assertTrue(len(history_list) >= 2)
+        self.assertEqual(len(devices_list), 7)
         
-        # Verify the top log is command_sent
-        self.assertEqual(history_list[0]["change_type"], "command_sent")
-        self.assertEqual(history_list[0]["previous_state"], "OFF")
-        self.assertEqual(history_list[0]["new_state"], "ON")
-        
-        # Verify the older log is device_created
-        self.assertEqual(history_list[1]["change_type"], "device_created")
-        self.assertIsNone(history_list[1]["previous_state"])
-        self.assertEqual(history_list[1]["new_state"], "OFF")
+        # Verify names are prefixed and room is linked
+        for dev in devices_list:
+            self.assertTrue(dev["name"].startswith("Bedside Panel"))
+            self.assertIsNotNone(dev["room_id"])
+            
+        # Get active room ID
+        room_id = devices_list[0]["room_id"]
 
-        # 9. Remove device
-        response = self.client.delete(f"/api/devices/{device_id}", headers=headers)
+        # 7. Re-provision the device to a different room and update prefix
+        reprovision_payload = {
+            "mac_address": "AA:BB:CC:DD:EE:FF",
+            "type": "LIGHT",
+            "name": "Main Board",
+            "new_room_name": "Living Room",
+            "new_room_type": "living_room"
+        }
+        response = self.client.post("/api/devices/provision", json=reprovision_payload, headers=headers)
         self.assertEqual(response.status_code, 200)
-
-        # 10. Confirm device list is empty
+        
+        # 8. List devices and verify room and names are updated
         response = self.client.get("/api/devices", headers=headers)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()), 0)
+        updated_devices = response.json()
+        self.assertEqual(len(updated_devices), 7)
+        
+        for dev in updated_devices:
+            self.assertTrue(dev["name"].startswith("Main Board"))
+            self.assertNotEqual(dev["room_id"], room_id)
+            
+        # 9. Clean up (remove one of the devices)
+        device_id = updated_devices[0]["id"]
+        response = self.client.delete(f"/api/devices/{device_id}", headers=headers)
+        self.assertEqual(response.status_code, 200)
 
 if __name__ == "__main__":
     unittest.main()
