@@ -770,7 +770,7 @@ export default function ProvisioningScreen({ route, navigation }) {
               <View style={styles.warningBox}>
                 <MaterialCommunityIcons name="information" size={18} color={TOKENS.accent} />
                 <Text style={styles.warningText}>
-                  Note: SoftAP use karne ke liye temporarily phone ka Mobile Data (Cellular Data) off rakhein, aur phone WiFi ko "SmartNest-Setup-XXXX" hotspot se connect karein.
+                  Note: For SoftAP setup, please temporarily turn OFF your phone's Mobile Data (cellular connection) and connect your Wi-Fi directly to the "SmartNest-Setup-XXXX" hotspot.
                 </Text>
               </View>
             )}
