@@ -241,8 +241,10 @@ export default function ProvisioningScreen({ route, navigation }) {
   
   // Auto-detect connected Wi-Fi SSID and retrieve saved password when credentials input stage is active
   useEffect(() => {
+    let unsubscribe = null;
+
     if (currentStage === 'INPUT') {
-      const checkWifiSsid = async () => {
+      const requestPermissionsAndListen = async () => {
         try {
           if (Platform.OS === 'android') {
             const hasLocationPermission = await PermissionsAndroid.check(
@@ -254,48 +256,56 @@ export default function ProvisioningScreen({ route, navigation }) {
               );
             }
           }
-          
-          NetInfo.fetch().then(async (state) => {
-            if (state.type === 'wifi' && state.details && state.details.ssid) {
-              const detectedSsid = state.details.ssid;
-              // Clean detected SSID and ensure it is not the ESP32 setup AP itself
-              const cleanSsid = detectedSsid ? detectedSsid.replace(/"/g, '') : '';
-              if (cleanSsid && cleanSsid !== '<unknown ssid>' && !cleanSsid.includes('Setup') && !cleanSsid.includes('SmartNest')) {
-                setSsid(cleanSsid);
-                
-                // Read saved password for this detected SSID from AsyncStorage
-                try {
-                  const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords');
-                  if (savedPasswordsStr) {
-                    const savedPasswords = JSON.parse(savedPasswordsStr);
-                    if (savedPasswords[detectedSsid]) {
-                      setWifiPassword(savedPasswords[detectedSsid]);
-                      setShowWifiInputs(false); // Hide inputs by default since password is saved
-                    } else {
-                      setShowWifiInputs(true);
-                    }
+        } catch (err) {
+          console.warn('[Permissions] Failed to check/request location permission:', err);
+        }
+
+        // Subscribe to network state changes dynamically
+        unsubscribe = NetInfo.addEventListener(async (state) => {
+          if (state.type === 'wifi' && state.details && state.details.ssid) {
+            const detectedSsid = state.details.ssid;
+            // Clean detected SSID and ensure it is not the ESP32 setup AP itself
+            const cleanSsid = detectedSsid ? detectedSsid.replace(/"/g, '') : '';
+            if (cleanSsid && cleanSsid !== '<unknown ssid>' && !cleanSsid.includes('Setup') && !cleanSsid.includes('SmartNest')) {
+              setSsid(cleanSsid);
+
+              // Read saved password for this detected SSID from AsyncStorage
+              try {
+                const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords');
+                if (savedPasswordsStr) {
+                  const savedPasswords = JSON.parse(savedPasswordsStr);
+                  if (savedPasswords[cleanSsid]) {
+                    setWifiPassword(savedPasswords[cleanSsid]);
+                    setShowWifiInputs(false); // Hide inputs by default since password is saved
                   } else {
+                    setWifiPassword('');
                     setShowWifiInputs(true);
                   }
-                } catch (e) {
-                  console.warn('[AsyncStorage] Error reading wifi passwords:', e);
+                } else {
+                  setWifiPassword('');
                   setShowWifiInputs(true);
                 }
-              } else {
+              } catch (e) {
+                console.warn('[AsyncStorage] Error reading wifi passwords:', e);
                 setShowWifiInputs(true);
               }
             } else {
               setShowWifiInputs(true);
             }
-          });
-        } catch (err) {
-          console.warn('[NetInfo] Failed to read current WiFi SSID:', err);
-          setShowWifiInputs(true);
-        }
+          } else {
+            setShowWifiInputs(true);
+          }
+        });
       };
-      
-      checkWifiSsid();
+
+      requestPermissionsAndListen();
     }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [currentStage]);
 
   const handleManualProvision = async () => {
