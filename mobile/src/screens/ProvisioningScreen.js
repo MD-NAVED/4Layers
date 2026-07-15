@@ -516,16 +516,33 @@ export default function ProvisioningScreen({ route, navigation }) {
         provisionCloud: 'RUNNING'
       }));
       
-      // Step 3: Registering on Cloud
+      // Step 3: Registering on Cloud (with retry loop for internet reconnection after SoftAP hotspot disconnects)
       const isNewRoom = selectedRoomId === 'NEW';
-      const provisionResponse = await provisionDevice(
-        nodeId, 
-        deviceType.trim().toLowerCase(),
-        boardName,
-        isNewRoom ? null : selectedRoomId,
-        isNewRoom ? newRoomName : null,
-        isNewRoom ? newRoomType : 'living_room'
-      );
+      let provisionResponse = null;
+      let retries = 6; // Try up to 6 times (total ~18 seconds)
+      
+      while (retries > 0) {
+        try {
+          setStatusText(`Registering on Cloud (Attempt ${7 - retries}/6)...`);
+          provisionResponse = await provisionDevice(
+            nodeId, 
+            deviceType.trim().toLowerCase(),
+            boardName,
+            isNewRoom ? null : selectedRoomId,
+            isNewRoom ? newRoomName : null,
+            isNewRoom ? newRoomType : 'living_room'
+          );
+          break; // Success!
+        } catch (apiErr) {
+          retries--;
+          if (retries === 0) {
+            throw apiErr; // Out of retries, bubble up error
+          }
+          console.log('[WifiProvisioning] Cloud registry attempt failed, retrying in 3s...', apiErr);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+      
       const generatedDeviceId = provisionResponse.id;
       setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
       
@@ -748,6 +765,15 @@ export default function ProvisioningScreen({ route, navigation }) {
         {currentStage === 'INPUT' && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>1. Config Credentials</Text>
+            
+            {pairingMethod === 'WIFI' && (
+              <View style={styles.warningBox}>
+                <MaterialCommunityIcons name="information" size={18} color={TOKENS.accent} />
+                <Text style={styles.warningText}>
+                  Note: SoftAP use karne ke liye temporarily phone ka Mobile Data (Cellular Data) off rakhein, aur phone WiFi ko "SmartNest-Setup-XXXX" hotspot se connect karein.
+                </Text>
+              </View>
+            )}
             
             {showWifiInputs ? (
               <>
@@ -1436,5 +1462,22 @@ const styles = StyleSheet.create({
   typeLabelSelected: {
     color: '#002112',
     fontWeight: '700'
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)'
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#dfe2f1',
+    flex: 1,
+    lineHeight: 16
   }
 });

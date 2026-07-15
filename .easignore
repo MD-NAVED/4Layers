@@ -19,3 +19,9 @@ node_modules/
 mobile/node_modules/
 .expo/
 mobile/.expo/
+*.exe
+*.apk
+*.winmd
+tasks/
+Plannings/
+stitch_iot_mqtt_control_App/
