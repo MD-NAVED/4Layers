@@ -54,6 +54,7 @@ const base64Encode = (str) => {
 };
 
 const base64Decode = (str) => {
+  if (!str) return '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let out = '';
   let buffer = 0;
@@ -69,6 +70,7 @@ const base64Decode = (str) => {
       out += String.fromCharCode((buffer >> bits) & 0xff);
     }
   }
+  return out;
 };
 
 const ROOM_TYPES = [
