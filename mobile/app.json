@@ -52,11 +52,11 @@
     "web": {
       "bundler": "metro"
     },
+    "owner": "mohammad-777s",
     "extra": {
       "eas": {
-        "projectId": "7e399ce6-bab7-4f92-a992-f3e66cb8e0a7"
+        "projectId": "91b9d718-8b1e-4ae8-b691-d43f37c0ed32"
       }
-    },
-    "owner": "mohammad-777"
+    }
   }
 }
