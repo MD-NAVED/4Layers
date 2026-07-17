@@ -266,7 +266,8 @@ export default function ProvisioningScreen({ route, navigation }) {
             const detectedSsid = state.details.ssid;
             // Clean detected SSID and ensure it is not the ESP32 setup AP itself
             const cleanSsid = detectedSsid ? detectedSsid.replace(/"/g, '') : '';
-            if (cleanSsid && cleanSsid !== '<unknown ssid>' && !cleanSsid.includes('Setup') && !cleanSsid.includes('SmartNest')) {
+            const lowerSsid = cleanSsid.toLowerCase();
+            if (cleanSsid && cleanSsid !== '<unknown ssid>' && !lowerSsid.includes('setup') && !lowerSsid.includes('smartnest')) {
               setSsid(cleanSsid);
 
               // Read saved password for this detected SSID from AsyncStorage
@@ -637,14 +638,18 @@ export default function ProvisioningScreen({ route, navigation }) {
         provisionCloud: 'RUNNING'
       }));
 
-      // 5. Send UUID back to NVS
-      setStatusText('Writing UUID configuration to NVS...');
-      const encodedUuid = base64Encode(generatedDeviceId);
-      await connectedDevice.writeCharacteristicWithResponseForService(
-        SERVICE_UUID,
-        DEVICE_ID_CHAR_UUID,
-        encodedUuid
-      );
+      // 5. Send UUID back to NVS (optional, handle gracefully if board already rebooted and disconnected)
+      try {
+        setStatusText('Writing UUID configuration to NVS...');
+        const encodedUuid = base64Encode(generatedDeviceId);
+        await connectedDevice.writeCharacteristicWithResponseForService(
+          SERVICE_UUID,
+          DEVICE_ID_CHAR_UUID,
+          encodedUuid
+        );
+      } catch (writeErr) {
+        console.warn('[BLEProvisioning] Optional UUID write failed (device may have rebooted):', writeErr);
+      }
 
       // 6. Complete provisioning
       setStatusText('Provisioning success!');

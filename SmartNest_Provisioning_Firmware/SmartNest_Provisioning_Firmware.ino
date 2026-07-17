@@ -281,7 +281,7 @@ class WifiWriteCallback: public BLECharacteristicCallbacks {
           preferences.putString("pass", receivedPass);
           preferences.end();
           
-          shouldReboot = true;
+          // Do NOT set shouldReboot = true here. Wait for the app to write the Device ID (UUID) first.
         }
       }
     }
@@ -294,6 +294,14 @@ class DeviceIdWriteCallback: public BLECharacteristicCallbacks {
       if (value.length() > 0) {
         Serial.print("[BLE] Decoded Cloud Device UUID: ");
         Serial.println(value);
+        
+        // Save UUID to preferences (optional, for debugging or storage)
+        preferences.begin("wifi", false);
+        preferences.putString("uuid", value);
+        preferences.end();
+        
+        // Now that the handshake is complete, trigger the reboot!
+        shouldReboot = true;
       }
     }
 };
