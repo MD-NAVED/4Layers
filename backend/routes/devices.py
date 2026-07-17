@@ -129,6 +129,46 @@ def remove_device(
     db.commit()
     return {"detail": f"Device {device_id} removed successfully."}
 
+@router.put("/{device_id}", response_model=schemas.DeviceResponse)
+def update_device(
+    device_id: UUID,
+    device_update: schemas.DeviceUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update device properties such as name, device_type, or room."""
+    device = db.query(models.Device).join(models.Home).filter(
+        models.Device.id == device_id,
+        models.Home.owner_id == current_user.id
+    ).first()
+
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found or access denied"
+        )
+
+    if device_update.name is not None:
+        device.name = device_update.name.strip()
+    if device_update.device_type is not None:
+        device.device_type = device_update.device_type.strip().lower()
+    if device_update.room_id is not None:
+        # Verify room exists inside home
+        room = db.query(models.Room).filter(
+            models.Room.id == device_update.room_id,
+            models.Room.home_id == device.home_id
+        ).first()
+        if not room:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Target room not found in this home"
+            )
+        device.room_id = device_update.room_id
+
+    db.commit()
+    db.refresh(device)
+    return device
+
 @router.post("/{device_id}/control", status_code=status.HTTP_200_OK)
 def control_device(
     device_id: UUID,

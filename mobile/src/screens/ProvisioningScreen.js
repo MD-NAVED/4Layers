@@ -105,6 +105,7 @@ export default function ProvisioningScreen({ route, navigation }) {
   // Manual onboarding states
   const [manualMacAddress, setManualMacAddress] = useState('');
   const [isProvisioningManual, setIsProvisioningManual] = useState(false);
+  const [provisionedMac, setProvisionedMac] = useState('');
   
   // Room and Board states
   const [homes, setHomes] = useState([]);
@@ -333,13 +334,14 @@ export default function ProvisioningScreen({ route, navigation }) {
       
       Alert.alert(
         'Success',
-        `Device provisioned successfully!\nID: ${res.id || 'N/A'}`,
+        'Device registered successfully. Let\'s configure your switches!',
         [
           {
-            text: 'OK',
+            text: 'Configure Switches',
             onPress: () => {
-              // Go back to devices home
-              navigation.navigate('DevicesHome');
+              navigation.navigate('ConfigureBoard', {
+                macAddress: manualMacAddress.trim().toUpperCase()
+              });
             }
           }
         ]
@@ -552,6 +554,7 @@ export default function ProvisioningScreen({ route, navigation }) {
         provisionCloud: 'DONE'
       }));
       
+      setProvisionedMac(nodeId);
       setCurrentStage('DONE');
     } catch (err) {
       console.error('[WifiProvisioning] Error:', err);
@@ -657,6 +660,7 @@ export default function ProvisioningScreen({ route, navigation }) {
         ...prev,
         provisionCloud: 'DONE'
       }));
+      setProvisionedMac(decodedMac);
       setCurrentStage('DONE');
       
       // Disconnect
@@ -1044,11 +1048,15 @@ export default function ProvisioningScreen({ route, navigation }) {
             
             <Button
               mode="contained"
-              onPress={() => navigation.navigate('DevicesHome')}
+              onPress={() => {
+                navigation.navigate('ConfigureBoard', {
+                  macAddress: provisionedMac
+                });
+              }}
               style={styles.primaryBtn}
               labelStyle={styles.primaryBtnText}
             >
-              OK
+              Configure Switches
             </Button>
           </View>
         )}

@@ -108,7 +108,7 @@ export default function DashboardScreen({ navigation }) {
           let mobileType = 'outlet';
           if (d.device_type === 'light') mobileType = 'light';
           else if (d.device_type === 'ac') mobileType = 'thermostat';
-          else if (d.device_type === 'fan') mobileType = 'outlet';
+          else if (d.device_type === 'fan') mobileType = 'fan';
           else if (d.device_type === 'tv') mobileType = 'outlet';
           else if (d.device_type === 'plug') mobileType = 'outlet';
 
@@ -116,6 +116,7 @@ export default function DashboardScreen({ navigation }) {
             id: d.id,
             name: d.name,
             room_id: d.room_id,
+            node_id: d.node_id,
             type: mobileType,
             status: d.current_state?.status === 'ON',
             value: d.current_state?.value !== undefined ? d.current_state.value : (d.device_type === 'ac' ? 72 : 50)
@@ -468,8 +469,13 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                   )}
 
-                  {/* Light Dimmer/Brightness Slider Controls */}
+                  {/* Light Dimmer/Brightness Slider Controls (Only for LED Strip/Dimmable lights) */}
                   {device.type === "light" && (
+                    device.name?.toLowerCase().includes('strip') || 
+                    device.name?.toLowerCase().includes('dimmable') || 
+                    device.name?.toLowerCase().includes('led') ||
+                    device.node_id?.endsWith('_6')
+                  ) && (
                     <View style={styles.sliderContainer}>
                       <View style={styles.sliderTrackRow}>
                         <MaterialCommunityIcons name="brightness-5" size={14} color={TOKENS.textSecondary} />

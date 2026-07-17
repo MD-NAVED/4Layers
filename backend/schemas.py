@@ -96,6 +96,11 @@ class DeviceResponse(DeviceBase):
         "from_attributes": True
     }
 
+class DeviceUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    device_type: Optional[str] = Field(None, description="Must be 'light', 'fan', or 'outlet'")
+    room_id: Optional[UUID] = None
+
 class DeviceProvision(BaseModel):
     mac_address: str = Field(..., min_length=1, description="MAC address of the physical hardware")
     type: str = Field(..., description="Device type, e.g. LIGHT, FAN, AC")

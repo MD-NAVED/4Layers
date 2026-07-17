@@ -23,6 +23,7 @@ import RoomsScreen from '../screens/RoomsScreen';
 import SchedulesScreen from '../screens/SchedulesScreen';
 import AlertsScreen from '../screens/AlertsScreen';
 import RoomSelectionScreen from '../screens/RoomSelectionScreen';
+import ConfigureBoardScreen from '../screens/ConfigureBoardScreen';
 
 const AuthStack = createStackNavigator();
 const HomeStack = createStackNavigator();
@@ -57,6 +58,11 @@ function HomeStackScreen() {
         name="Provisioning" 
         component={ProvisioningScreen} 
         options={{ title: 'Provision Node' }} 
+      />
+      <HomeStack.Screen 
+        name="ConfigureBoard" 
+        component={ConfigureBoardScreen} 
+        options={{ title: 'Configure Board' }} 
       />
       <HomeStack.Screen 
         name="Rooms" 
