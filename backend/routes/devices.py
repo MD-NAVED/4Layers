@@ -196,7 +196,12 @@ def control_device(
     previous_state = device.current_state or {}
     requested_state = control_data.state
 
-    # 1. Log "command_sent" in the database history log
+    # 1. Log "command_sent" in the database history log and update database state immediately
+    # to prevent race conditions when the frontend refreshes state before MQTT roundtrip completes.
+    updated_state = dict(previous_state)
+    updated_state.update(requested_state)
+    device.current_state = updated_state
+
     history_entry = models.DeviceHistory(
         device_id=device.id,
         change_type="command_sent",
@@ -291,6 +296,11 @@ def bulk_control_devices(
     for device in devices:
         previous_state = device.current_state or {}
         requested_state = control_data.state
+
+        # Update database state immediately to prevent race conditions on UI refresh
+        updated_state = dict(previous_state)
+        updated_state.update(requested_state)
+        device.current_state = updated_state
 
         # Log "command_sent"
         history_entry = models.DeviceHistory(
