@@ -108,6 +108,11 @@ class DeviceProvision(BaseModel):
     room_id: Optional[UUID] = None
     new_room_name: Optional[str] = None
     new_room_type: Optional[str] = "living_room"
+class DeviceProvisionSingle(BaseModel):
+    mac_address: str = Field(..., description="MAC address of the physical hardware")
+    suffix: str = Field(..., description="Channel suffix, e.g. 1 to 7")
+    room_id: UUID = Field(..., description="Destination room UUID")
+    device_type: str = Field(..., description="Device type, e.g. light, fan, outlet")
 
 class DeviceControl(BaseModel):
     state: Dict[str, Any] = Field(..., description="JSON representation of desired state updates (e.g. {'status': 'ON'})")

@@ -340,7 +340,8 @@ export default function ProvisioningScreen({ route, navigation }) {
             text: 'Configure Switches',
             onPress: () => {
               navigation.navigate('ConfigureBoard', {
-                macAddress: manualMacAddress.trim().toUpperCase()
+                macAddress: manualMacAddress.trim().toUpperCase(),
+                roomId: selectedRoomId
               });
             }
           }
@@ -1050,7 +1051,8 @@ export default function ProvisioningScreen({ route, navigation }) {
               mode="contained"
               onPress={() => {
                 navigation.navigate('ConfigureBoard', {
-                  macAddress: provisionedMac
+                  macAddress: provisionedMac,
+                  roomId: selectedRoomId
                 });
               }}
               style={styles.primaryBtn}

@@ -420,6 +420,14 @@ def provision_device(
                 detail="This physical device is registered under another user's account"
             )
         
+        # If the device is already assigned to a room, do not allow re-assigning it dynamically
+        if device.room_id is not None:
+            room_name = device.room.name if device.room else "another room"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"This hardware is already registered in '{room_name}'. Please delete that room or its devices first to re-provision it."
+            )
+        
         # Update room and name prefix for all 7 channels under this MAC
         if prefix:
             for cfg in channel_configs:
@@ -480,4 +488,61 @@ def provision_device(
 
     # Return the first channel (Switch 1) to satisfy API schema
     return {"id": created_devices[0].id if created_devices else uuid.uuid4()}
+
+@router.post("/provision-single", response_model=schemas.DeviceResponse, status_code=status.HTTP_201_CREATED)
+def provision_single_channel(
+    provision_data: schemas.DeviceProvisionSingle,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Dynamically activate/re-create a single switch (channel suffix) under a board."""
+    mac = provision_data.mac_address.strip().upper()
+    suffix = provision_data.suffix.strip()
+    chan_node_id = f"{mac}_{suffix}"
+
+    # Verify home and room ownership
+    room = db.query(models.Room).join(models.Home).filter(
+        models.Room.id == provision_data.room_id,
+        models.Home.owner_id == current_user.id
+    ).first()
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Room not found or access denied"
+        )
+
+    # Check if channel node ID already exists
+    existing = db.query(models.Device).filter(models.Device.node_id == chan_node_id).first()
+    if existing:
+        # Re-assign or just update room
+        existing.room_id = room.id
+        existing.device_type = provision_data.device_type.strip().lower()
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    # Define default attributes based on suffix type
+    default_name = f"Switch {suffix}"
+    if suffix == "5":
+        default_name = "Fan"
+    elif suffix == "6":
+        default_name = "LED Strip"
+    elif suffix == "7":
+        default_name = "Master Switch"
+
+    new_device = models.Device(
+        id=uuid.uuid4(),
+        name=default_name,
+        device_type=provision_data.device_type.strip().lower(),
+        node_id=chan_node_id,
+        mac_address=mac,
+        home_id=room.home_id,
+        room_id=room.id,
+        is_online=False,
+        current_state={"status": "OFF", "value": 3 if suffix == "5" else (50 if suffix == "6" else 0)}
+    )
+    db.add(new_device)
+    db.commit()
+    db.refresh(new_device)
+    return new_device
 

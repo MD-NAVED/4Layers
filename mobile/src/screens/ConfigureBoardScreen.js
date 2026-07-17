@@ -25,106 +25,201 @@ const TOKENS = {
   error: '#EF4444'
 };
 
+const STATIC_SUFFIXES = ['1', '2', '3', '4', '5', '6', '7'];
+
+const getChannelDefaultLabel = (suffix) => {
+  if (suffix === '5') return 'Fan';
+  if (suffix === '6') return 'LED Strip';
+  if (suffix === '7') return 'Master Switch';
+  return `Switch ${suffix}`;
+};
+
+const getChannelDefaultType = (suffix) => {
+  if (suffix === '5') return 'fan';
+  if (suffix === '7') return 'outlet';
+  return 'light'; // 1, 2, 3, 4, 6
+};
+
 export default function ConfigureBoardScreen({ route, navigation }) {
-  const { macAddress } = route.params || {};
+  const { macAddress, roomId } = route.params || {};
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [deviceList, setDeviceList] = useState([]);
+  const [deviceSlots, setDeviceSlots] = useState([]);
+  const [fallbackRoomId, setFallbackRoomId] = useState(roomId || null);
 
   // Fetch all channels corresponding to this board from the backend on load
-  useEffect(() => {
-    const fetchChannels = async () => {
-      try {
-        const response = await apiClient.get('/api/devices');
-        const allDevices = response.data;
-        if (Array.isArray(allDevices)) {
-          // Filter matching MAC address (case-insensitive)
-          const targetMac = macAddress ? macAddress.trim().toUpperCase() : '';
-          const matching = allDevices.filter(d => 
-            d.mac_address && d.mac_address.toUpperCase() === targetMac
-          );
-          
-          // Sort by suffix to keep L1 -> L7 ordered
-          matching.sort((a, b) => {
-            const aSuf = a.node_id.split('_')[1] || '';
-            const bSuf = b.node_id.split('_')[1] || '';
-            return aSuf.localeCompare(bSuf, undefined, { numeric: true });
+  const loadConfiguration = async () => {
+    try {
+      setIsLoading(true);
+      // Retrieve fallback room ID if not passed in navigation params
+      let activeRoomId = fallbackRoomId;
+      if (!activeRoomId) {
+        const homesRes = await apiClient.get('/api/homes');
+        if (homesRes.data && homesRes.data.length > 0) {
+          const roomsRes = await apiClient.get(`/api/rooms/home/${homesRes.data[0].id}`);
+          if (roomsRes.data && roomsRes.data.length > 0) {
+            activeRoomId = roomsRes.data[0].id;
+            setFallbackRoomId(activeRoomId);
+          }
+        }
+      }
+
+      const response = await apiClient.get('/api/devices');
+      const allDevices = response.data;
+      if (Array.isArray(allDevices)) {
+        const targetMac = macAddress ? macAddress.trim().toUpperCase() : '';
+        const matching = allDevices.filter(d => 
+          d.mac_address && d.mac_address.toUpperCase() === targetMac
+        );
+
+        // Map matching devices to their respective suffixes
+        const slots = STATIC_SUFFIXES.map(suffix => {
+          const device = matching.find(d => {
+            const parts = d.node_id.split('_');
+            return parts[parts.length - 1] === suffix;
           });
 
-          // Initialize states with DB values
-          const formatted = matching.map(d => ({
-            id: d.id,
-            node_id: d.node_id,
-            suffix: d.node_id.split('_')[1] || '?',
-            name: d.name,
-            type: d.device_type, // 'light', 'fan', 'outlet'
-            status: d.current_state?.status === 'ON'
-          }));
+          if (device) {
+            return {
+              suffix,
+              isActive: true,
+              id: device.id,
+              node_id: device.node_id,
+              name: device.name,
+              type: device.device_type,
+              status: device.current_state?.status === 'ON'
+            };
+          } else {
+            return {
+              suffix,
+              isActive: false,
+              id: null,
+              node_id: `${targetMac}_${suffix}`,
+              name: getChannelDefaultLabel(suffix),
+              type: getChannelDefaultType(suffix),
+              status: false
+            };
+          }
+        });
 
-          setDeviceList(formatted);
-        }
-      } catch (err) {
-        console.error('[ConfigureBoard] Fetch failed:', err);
-        Alert.alert('Error', 'Failed to retrieve channels from server.');
-      } finally {
-        setIsLoading(false);
+        setDeviceSlots(slots);
       }
-    };
+    } catch (err) {
+      console.error('[ConfigureBoard] Fetch failed:', err);
+      Alert.alert('Error', 'Failed to retrieve channels from server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchChannels();
+  useEffect(() => {
+    loadConfiguration();
   }, [macAddress]);
+
+  // Activate / Provision a deleted channel on demand
+  const handleActivateSwitch = async (index) => {
+    const slot = deviceSlots[index];
+    const targetRoom = roomId || fallbackRoomId;
+    if (!targetRoom) {
+      Alert.alert('Error', 'No destination room available to register the switch.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await apiClient.post('/api/devices/provision-single', {
+        mac_address: macAddress.trim().toUpperCase(),
+        suffix: slot.suffix,
+        room_id: targetRoom,
+        device_type: slot.type
+      });
+      await loadConfiguration();
+    } catch (err) {
+      console.error('[ConfigureBoard] Activation failed:', err);
+      Alert.alert('Activation Failed', 'Could not activate this switch. Check connection.');
+      setIsLoading(false);
+    }
+  };
+
+  // Deactivate / Delete an active channel from DB
+  const handleDeactivateSwitch = async (index) => {
+    const slot = deviceSlots[index];
+    Alert.alert(
+      'Remove Switch?',
+      `Are you sure you want to hide and remove "${slot.name}" from your room dashboard?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await apiClient.delete(`/api/devices/${slot.id}`);
+              await loadConfiguration();
+            } catch (err) {
+              console.error('[ConfigureBoard] Deletion failed:', err);
+              Alert.alert('Deletion Failed', 'Could not delete the switch.');
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // Test switch toggle in real-time
   const handleTestToggle = async (index) => {
-    const updatedList = [...deviceList];
-    const device = updatedList[index];
-    const newStatus = !device.status;
+    const updatedSlots = [...deviceSlots];
+    const slot = updatedSlots[index];
+    const newStatus = !slot.status;
 
     // Optimistic UI update
-    device.status = newStatus;
-    setDeviceList(updatedList);
+    slot.status = newStatus;
+    setDeviceSlots(updatedSlots);
 
     try {
-      await apiClient.post(`/api/devices/${device.id}/control`, {
+      await apiClient.post(`/api/devices/${slot.id}/control`, {
         status: newStatus ? 'ON' : 'OFF'
       });
     } catch (err) {
       console.warn('[ConfigureBoard] Test toggle failed:', err);
       // Revert status on failure
-      device.status = !newStatus;
-      setDeviceList([...updatedList]);
-      Alert.alert('Testing Failed', 'Check if the board is powered on and connected to internet.');
+      slot.status = !newStatus;
+      setDeviceSlots([...updatedSlots]);
+      Alert.alert('Testing Failed', 'Check if the board is powered on and connected.');
     }
   };
 
-  // Handle local state edits
+  // Handle local state edits for active switches
   const handleNameChange = (index, value) => {
-    const updated = [...deviceList];
+    const updated = [...deviceSlots];
     updated[index].name = value;
-    setDeviceList(updated);
+    setDeviceSlots(updated);
   };
 
   const handleTypeChange = (index, value) => {
-    const updated = [...deviceList];
+    const updated = [...deviceSlots];
     updated[index].type = value;
-    setDeviceList(updated);
+    setDeviceSlots(updated);
   };
 
-  // Submit all edits to the backend
+  // Submit edits for all active channels to backend
   const handleSaveAndComplete = async () => {
     setIsSaving(true);
     try {
-      const updatePromises = deviceList.map(d => 
-        apiClient.put(`/api/devices/${d.id}`, {
-          name: d.name.trim(),
-          device_type: d.type
+      const activeSlots = deviceSlots.filter(s => s.isActive);
+      const updatePromises = activeSlots.map(s => 
+        apiClient.put(`/api/devices/${s.id}`, {
+          name: s.name.trim(),
+          device_type: s.type
         })
       );
       await Promise.all(updatePromises);
       
       Alert.alert(
         'Setup Complete',
-        'All switches have been configured successfully!',
+        'Your switch board configuration has been saved!',
         [
           { 
             text: 'Go to Dashboard', 
@@ -144,7 +239,7 @@ export default function ConfigureBoardScreen({ route, navigation }) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={TOKENS.accent} />
-        <Text style={styles.loadingText}>Retrieving board configuration...</Text>
+        <Text style={styles.loadingText}>Syncing board configuration...</Text>
       </View>
     );
   }
@@ -158,13 +253,13 @@ export default function ConfigureBoardScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.header}>
-          <Text style={styles.title}>Configure Switches</Text>
+          <Text style={styles.title}>Switchboard Terminals</Text>
           <Text style={styles.subtitle}>
-            Test each switch to identify what it controls, rename it, and select the device type.
+            Toggle switches to identify appliances, rename active switches, or hide unused channels.
           </Text>
         </View>
 
-        {deviceList.length === 0 ? (
+        {deviceSlots.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No channels found for this board.</Text>
             <Button mode="contained" onPress={() => navigation.navigate('DevicesHome')} style={styles.completeButton}>
@@ -173,85 +268,110 @@ export default function ConfigureBoardScreen({ route, navigation }) {
           </View>
         ) : (
           <>
-            {deviceList.map((device, idx) => (
-              <View key={device.id} style={styles.card}>
+            {deviceSlots.map((device, idx) => (
+              <View key={device.suffix} style={[styles.card, !device.isActive && styles.cardInactive]}>
                 <View style={styles.cardHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <MaterialCommunityIcons 
                       name={device.type === 'fan' ? 'fan' : (device.type === 'light' ? 'lightbulb' : 'power-plug')} 
                       size={20} 
-                      color={device.status ? TOKENS.accent : TOKENS.textSecondary} 
+                      color={device.isActive ? (device.status ? TOKENS.accent : TOKENS.textSecondary) : '#555555'} 
                     />
-                    <Text style={styles.channelLabel}>Channel {device.suffix}</Text>
+                    <Text style={[styles.channelLabel, !device.isActive && styles.channelLabelInactive]}>
+                      Channel {device.suffix} {!device.isActive && '(Inactive)'}
+                    </Text>
                   </View>
                   
-                  {/* Test Switch Trigger */}
-                  <TouchableOpacity 
-                    style={[styles.testButton, device.status && styles.testButtonActive]} 
-                    onPress={() => handleTestToggle(idx)}
-                  >
-                    <MaterialCommunityIcons 
-                      name="power" 
-                      size={14} 
-                      color={device.status ? '#000000' : TOKENS.accent} 
+                  {device.isActive ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {/* Test Trigger */}
+                      <TouchableOpacity 
+                        style={[styles.testButton, device.status && styles.testButtonActive]} 
+                        onPress={() => handleTestToggle(idx)}
+                      >
+                        <MaterialCommunityIcons 
+                          name="power" 
+                          size={14} 
+                          color={device.status ? '#000000' : TOKENS.accent} 
+                        />
+                        <Text style={[styles.testButtonText, device.status && styles.testButtonTextActive]}>
+                          {device.status ? 'ON' : 'Test'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Deactivate Trigger */}
+                      <TouchableOpacity 
+                        style={styles.deleteButton} 
+                        onPress={() => handleDeactivateSwitch(idx)}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={16} color={TOKENS.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    /* Activate Trigger */
+                    <TouchableOpacity 
+                      style={styles.activateButton} 
+                      onPress={() => handleActivateSwitch(idx)}
+                    >
+                      <MaterialCommunityIcons name="plus" size={14} color="#000000" />
+                      <Text style={styles.activateButtonText}>Activate</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Edit Form (Only shown if active) */}
+                {device.isActive && (
+                  <View style={styles.form}>
+                    <Text style={styles.label}>Switch Name</Text>
+                    <TextInput
+                      value={device.name}
+                      onChangeText={(val) => handleNameChange(idx, val)}
+                      mode="outlined"
+                      textColor="#FFFFFF"
+                      theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
+                      style={styles.input}
+                      placeholder={`e.g. Switch ${device.suffix}`}
+                      placeholderTextColor={TOKENS.textSecondary}
                     />
-                    <Text style={[styles.testButtonText, device.status && styles.testButtonTextActive]}>
-                      {device.status ? 'Testing (ON)' : 'Test Switch'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
 
-                {/* Edit Form */}
-                <View style={styles.form}>
-                  <Text style={styles.label}>Switch Name</Text>
-                  <TextInput
-                    value={device.name}
-                    onChangeText={(val) => handleNameChange(idx, val)}
-                    mode="outlined"
-                    textColor="#FFFFFF"
-                    theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                    style={styles.input}
-                    placeholder={`e.g. Switch ${device.suffix}`}
-                    placeholderTextColor={TOKENS.textSecondary}
-                  />
-
-                  {/* Device Type Select */}
-                  <Text style={[styles.label, { marginTop: 8 }]}>Device Type</Text>
-                  <SegmentedButtons
-                    value={device.type}
-                    onValueChange={(val) => handleTypeChange(idx, val)}
-                    theme={{
-                      colors: {
-                        secondaryContainer: TOKENS.accent,
-                        onSecondaryContainer: '#000000',
-                        outline: TOKENS.border
-                      }
-                    }}
-                    buttons={[
-                      {
-                        value: 'light',
-                        label: 'Light',
-                        showSelectedCheck: true,
-                        style: device.type === 'light' ? styles.segmentedActive : styles.segmentedInactive,
-                        labelStyle: device.type === 'light' ? styles.labelActive : styles.labelInactive
-                      },
-                      {
-                        value: 'fan',
-                        label: 'Fan',
-                        showSelectedCheck: true,
-                        style: device.type === 'fan' ? styles.segmentedActive : styles.segmentedInactive,
-                        labelStyle: device.type === 'fan' ? styles.labelActive : styles.labelInactive
-                      },
-                      {
-                        value: 'outlet',
-                        label: 'Outlet',
-                        showSelectedCheck: true,
-                        style: device.type === 'outlet' ? styles.segmentedActive : styles.segmentedInactive,
-                        labelStyle: device.type === 'outlet' ? styles.labelActive : styles.labelInactive
-                      }
-                    ]}
-                  />
-                </View>
+                    {/* Device Type Select */}
+                    <Text style={[styles.label, { marginTop: 8 }]}>Device Type</Text>
+                    <SegmentedButtons
+                      value={device.type}
+                      onValueChange={(val) => handleTypeChange(idx, val)}
+                      theme={{
+                        colors: {
+                          secondaryContainer: TOKENS.accent,
+                          onSecondaryContainer: '#000000',
+                          outline: TOKENS.border
+                        }
+                      }}
+                      buttons={[
+                        {
+                          value: 'light',
+                          label: 'Light',
+                          showSelectedCheck: true,
+                          style: device.type === 'light' ? styles.segmentedActive : styles.segmentedInactive,
+                          labelStyle: device.type === 'light' ? styles.labelActive : styles.labelInactive
+                        },
+                        {
+                          value: 'fan',
+                          label: 'Fan',
+                          showSelectedCheck: true,
+                          style: device.type === 'fan' ? styles.segmentedActive : styles.segmentedInactive,
+                          labelStyle: device.type === 'fan' ? styles.labelActive : styles.labelInactive
+                        },
+                        {
+                          value: 'outlet',
+                          label: 'Outlet',
+                          showSelectedCheck: true,
+                          style: device.type === 'outlet' ? styles.segmentedActive : styles.segmentedInactive,
+                          labelStyle: device.type === 'outlet' ? styles.labelActive : styles.labelInactive
+                        }
+                      ]}
+                    />
+                  </View>
+                )}
               </View>
             ))}
 
@@ -264,7 +384,7 @@ export default function ConfigureBoardScreen({ route, navigation }) {
               {isSaving ? (
                 <ActivityIndicator size="small" color="#000000" />
               ) : (
-                <Text style={styles.completeButtonText}>Save and Complete Setup</Text>
+                <Text style={styles.completeButtonText}>Save Configurations</Text>
               )}
             </TouchableOpacity>
           </>
@@ -325,19 +445,24 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16
   },
+  cardInactive: {
+    backgroundColor: '#0F0F0F',
+    borderColor: 'rgba(255,255,255,0.03)'
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: TOKENS.border,
-    paddingBottom: 10,
-    marginBottom: 12
+    paddingBottom: 2
   },
   channelLabel: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800'
+  },
+  channelLabelInactive: {
+    color: '#555555',
+    fontWeight: '500'
   },
   testButton: {
     flexDirection: 'row',
@@ -346,7 +471,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: TOKENS.accent,
     borderRadius: 6,
-    paddingVertical: 4,
+    paddingVertical: 3,
     paddingHorizontal: 8
   },
   testButtonActive: {
@@ -361,7 +486,32 @@ const styles = StyleSheet.create({
   testButtonTextActive: {
     color: '#000000'
   },
+  deleteButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 6,
+    padding: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)'
+  },
+  activateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: TOKENS.accent,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10
+  },
+  activateButtonText: {
+    color: '#000000',
+    fontSize: 11,
+    fontWeight: '900'
+  },
   form: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: TOKENS.border,
+    paddingTop: 10,
     gap: 6
   },
   label: {

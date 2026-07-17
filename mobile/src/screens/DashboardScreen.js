@@ -44,7 +44,7 @@ function CapsuleSwitch({ isEnabled, onToggle }) {
 }
 
 export default function DashboardScreen({ navigation }) {
-  const [selectedRoom, setSelectedRoom] = useState("all");
+  const [selectedRoom, setSelectedRoom] = useState("");
   const [isArmed, setIsArmed] = useState(true);
   const [devices, setDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,8 +67,18 @@ export default function DashboardScreen({ navigation }) {
           });
           setRoomMapping(mapping);
           setDbRooms(roomsRes.data);
+          
+          // Auto-select first room if none is selected, or if selected room was deleted
+          const roomIds = roomsRes.data.map(r => r.id);
+          setSelectedRoom(prev => {
+            if (!prev || !roomIds.includes(prev)) {
+              return roomsRes.data[0].id;
+            }
+            return prev;
+          });
         } else {
           setDbRooms([]);
+          setSelectedRoom("");
         }
       }
     } catch (e) {
@@ -227,15 +237,10 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  const filteredDevices = selectedRoom === "all"
-    ? devices
-    : devices.filter((device) => device.room_id === selectedRoom);
+  const filteredDevices = devices.filter((device) => device.room_id === selectedRoom);
 
   const isSecurityArmed = !!isArmed;
-  const ROOM_TABS = [
-    { id: "all", label: "All" },
-    ...dbRooms.map((r) => ({ id: r.id, label: r.name }))
-  ];
+  const ROOM_TABS = dbRooms.map((r) => ({ id: r.id, label: r.name }));
 
   return <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="light-content" backgroundColor={TOKENS.bg} />
@@ -329,12 +334,12 @@ export default function DashboardScreen({ navigation }) {
         {/* Real Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statColumn}>
-            <Text style={styles.statNumber}>{devices.length}</Text>
+            <Text style={styles.statNumber}>{filteredDevices.length}</Text>
             <Text style={styles.statLabel}>Total Devices</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statColumn}>
-            <Text style={styles.statNumber}>{devices.filter(d => d.status).length}</Text>
+            <Text style={styles.statNumber}>{filteredDevices.filter(d => d.status).length}</Text>
             <Text style={styles.statLabel}>Devices ON</Text>
           </View>
           <View style={styles.statDivider} />
