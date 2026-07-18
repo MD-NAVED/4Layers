@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import apiClient from "../api/client";
 import DeviceCard from "../components/DeviceCard";
 import EnergyChart from "../components/EnergyChart";
+import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttClient";
 const TOKENS = {
   bg: "#131313",
   cardBg: "#1E1E1E",
@@ -158,6 +159,14 @@ export default function DashboardScreen({ navigation }) {
     fetchRoomsMapping();
     fetchUnreadAlertsCount();
     fetchProfile();
+    
+    // Connect to MQTT broker dynamically on dashboard mount
+    connectMqtt().catch(err => console.warn('[MQTT] Connection failed:', err));
+    
+    return () => {
+      // Disconnect cleanly when leaving dashboard screen
+      disconnectMqtt();
+    };
   }, []);
 
   const hasLoadedRef = useRef(false);
@@ -188,8 +197,24 @@ export default function DashboardScreen({ navigation }) {
     if (!target) return;
     const nextStatus = !target.status;
     
+    // 1. Optimistic UI update
     setDevices((prev) => prev.map((d) => d.id === id ? { ...d, status: nextStatus } : d));
     
+    // 2. Direct MQTT publish over WebSockets (sub-30ms execution)
+    let baseNodeId = target.node_id;
+    let channel = 1;
+    if (target.node_id.includes('_')) {
+      const parts = target.node_id.split('_');
+      baseNodeId = parts[0];
+      channel = parseInt(parts[parts.length - 1], 10);
+    }
+    const topic = `home/device/${baseNodeId}/control`;
+    publishMessage(topic, {
+      channel,
+      status: nextStatus ? 'ON' : 'OFF'
+    });
+
+    // 3. HTTP sync backup
     try {
       await apiClient.post(`/api/devices/${id}/control`, {
         state: { status: nextStatus ? 'ON' : 'OFF' }
@@ -207,8 +232,30 @@ export default function DashboardScreen({ navigation }) {
     const minVal = target.type === "thermostat" ? 60 : 0;
     const nextVal = Math.max(minVal, Math.min(maxVal, target.value + step));
     
+    // 1. Optimistic UI update
     setDevices((prev) => prev.map((d) => d.id === id ? { ...d, value: nextVal } : d));
     
+    // 2. Direct MQTT publish
+    let baseNodeId = target.node_id;
+    let channel = 1;
+    if (target.node_id.includes('_')) {
+      const parts = target.node_id.split('_');
+      baseNodeId = parts[0];
+      channel = parseInt(parts[parts.length - 1], 10);
+    }
+    const topic = `home/device/${baseNodeId}/control`;
+    const payload = {
+      channel,
+      status: target.status ? 'ON' : 'OFF'
+    };
+    if (target.type === 'fan') {
+      payload.speed = nextVal;
+    } else {
+      payload.value = nextVal;
+    }
+    publishMessage(topic, payload);
+
+    // 3. HTTP sync backup
     try {
       await apiClient.post(`/api/devices/${id}/control`, {
         state: { 
@@ -228,8 +275,26 @@ export default function DashboardScreen({ navigation }) {
 
     if (deviceIds.length === 0) return;
 
+    // 1. Optimistic UI update
     setDevices(prev => prev.map(d => deviceIds.includes(d.id) ? { ...d, status: turnOn } : d));
 
+    // 2. Direct MQTT publish (Master Channel 7 command to all unique boards in the room)
+    const uniqueBaseNodeIds = new Set();
+    filteredDevices.forEach(d => {
+      if (d.node_id.includes('_')) {
+        uniqueBaseNodeIds.add(d.node_id.split('_')[0]);
+      }
+    });
+
+    uniqueBaseNodeIds.forEach(baseNodeId => {
+      const topic = `home/device/${baseNodeId}/control`;
+      publishMessage(topic, {
+        channel: 7,
+        status: targetState
+      });
+    });
+
+    // 3. HTTP sync backup
     try {
       await apiClient.post('/api/devices/bulk-control', {
         device_ids: deviceIds,
