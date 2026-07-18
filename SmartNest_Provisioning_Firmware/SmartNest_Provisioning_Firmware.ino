@@ -95,6 +95,10 @@ bool inSetupMode = false;
 String ssid = "";
 String password = "";
 
+// Reset Button holding logic
+unsigned long buttonPressStart = 0;
+bool buttonHeld = false;
+
 // --- Format Unique Node ID based on MAC Address ---
 void generateNodeId() {
   uint64_t mac = ESP.getEfuseMac();
@@ -125,6 +129,31 @@ void blinkLED(int times, int delayMs) {
     delay(delayMs);
     digitalWrite(STATUS_LED, LOW);
     delay(delayMs);
+  }
+}
+
+// --- Check and handle reset button hold at runtime ---
+void checkResetButton() {
+  if (digitalRead(RESET_BUTTON) == LOW) {
+    if (!buttonHeld) {
+      buttonPressStart = millis();
+      buttonHeld = true;
+      Serial.println("[Reset] Button pressed. Keep holding for 3 seconds to reset...");
+    } else {
+      if (millis() - buttonPressStart >= 3000) {
+        Serial.println("[Reset] Reset button held for 3 seconds! Formatting NVS and rebooting...");
+        preferences.begin("wifi", false);
+        preferences.clear();
+        preferences.end();
+        blinkLED(15, 60); // Rapid blink to confirm
+        ESP.restart();
+      }
+    }
+  } else {
+    if (buttonHeld) {
+      Serial.println("[Reset] Button released before 3 seconds.");
+      buttonHeld = false;
+    }
   }
 }
 
@@ -580,6 +609,8 @@ void setup() {
 }
 
 void loop() {
+  checkResetButton(); // Always check reset button state (at runtime or setup mode)
+
   if (inSetupMode) {
     server.handleClient(); // Handle HTTP server requests
     if (shouldReboot) {
