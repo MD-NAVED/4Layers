@@ -342,15 +342,12 @@ export default function ProvisioningScreen({ route, navigation }) {
       
       Alert.alert(
         'Success',
-        'Device registered successfully. Let\'s configure your switches!',
+        'Device registered successfully!',
         [
           {
-            text: 'Configure Switches',
+            text: 'OK',
             onPress: () => {
-              navigation.navigate('ConfigureBoard', {
-                macAddress: manualMacAddress.trim().toUpperCase(),
-                roomId: selectedRoomId
-              });
+              navigation.navigate('DevicesHome');
             }
           }
         ]
@@ -1179,15 +1176,12 @@ export default function ProvisioningScreen({ route, navigation }) {
             <Button
               mode="contained"
               onPress={() => {
-                navigation.navigate('ConfigureBoard', {
-                  macAddress: provisionedMac,
-                  roomId: selectedRoomId
-                });
+                navigation.navigate('DevicesHome');
               }}
               style={styles.primaryBtn}
               labelStyle={styles.primaryBtnText}
             >
-              Configure Switches
+              Go to Dashboard
             </Button>
           </View>
         )}

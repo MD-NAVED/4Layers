@@ -269,19 +269,14 @@ export default function DashboardScreen({ navigation }) {
               {!hasError ? "Connected" : "Offline"}
             </Text>
           </View>
-          {/* Notifications Bell */}
+          {/* Add Device Plus Icon instead of Bell */}
           <TouchableOpacity 
             style={styles.bellButton}
-            onPress={() => navigation.navigate("Alerts")}
+            onPress={() => navigation.navigate("RoomSelection")}
             accessibilityRole="button"
-            accessibilityLabel="System Notifications Center"
+            accessibilityLabel="Add New Device"
           >
-            <MaterialCommunityIcons name="bell-outline" size={24} color={TOKENS.textPrimary} />
-            {unreadAlertsCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unreadAlertsCount}</Text>
-              </View>
-            )}
+            <MaterialCommunityIcons name="plus" size={28} color={TOKENS.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
