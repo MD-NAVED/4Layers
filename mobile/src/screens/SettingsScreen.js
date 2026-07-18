@@ -42,11 +42,7 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-  // MQTT configs
-  const [brokerHost, setBrokerHost] = useState('broker.emqx.io');
-  const [brokerPort, setBrokerPort] = useState('1883');
-  const [clientId, setClientId] = useState('SmartNest-Client-01');
-  const [testingConnection, setTestingConnection] = useState(false);
+
 
   useEffect(() => {
     fetchUserProfile();
@@ -125,13 +121,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleTestConnection = () => {
-    setTestingConnection(true);
-    setTimeout(() => {
-      setTestingConnection(false);
-      Alert.alert('MQTT Connect Successful', `Connected to broker at ${brokerHost}:${brokerPort} safely!`);
-    }, 1500);
-  };
+
 
   const handleLogout = () => {
     Alert.alert(
@@ -243,64 +233,7 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* MQTT Settings Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="router" size={20} color={TOKENS.accent} />
-          <Text style={styles.sectionTitle}>MQTT Broker Settings</Text>
-        </View>
 
-        <View style={styles.card}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Host Address</Text>
-            <TextInput
-              style={styles.input}
-              value={brokerHost}
-              onChangeText={setBrokerHost}
-              placeholder="e.g. broker.emqx.io"
-              placeholderTextColor={TOKENS.textSecondary}
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-              <Text style={styles.label}>Port</Text>
-              <TextInput
-                style={styles.input}
-                value={brokerPort}
-                onChangeText={setBrokerPort}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={[styles.inputGroup, { flex: 2 }]}>
-              <Text style={styles.label}>Client ID</Text>
-              <TextInput
-                style={styles.input}
-                value={clientId}
-                onChangeText={setClientId}
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, styles.buttonSecondary, { marginTop: 12 }]}
-            onPress={handleTestConnection}
-            disabled={testingConnection}
-            activeOpacity={0.8}
-          >
-            {testingConnection ? (
-              <ActivityIndicator size="small" color={TOKENS.accent} />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="sync" size={16} color={TOKENS.accent} style={{ marginRight: 4 }} />
-                <Text style={[styles.buttonTextSecondary, { color: TOKENS.accent }]}>Test Connection</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* Security Section */}
       <View style={styles.section}>
