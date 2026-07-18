@@ -111,6 +111,10 @@ void generateNodeId() {
   Serial.println(command_topic);
   Serial.print("Publish Status Topic    : ");
   Serial.println(status_topic);
+  Serial.println("------------------------------------");
+  Serial.println("Click the link to generate/print QR sticker:");
+  Serial.printf("Plain ID QR: https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=%s\n", NODE_ID);
+  Serial.printf("JSON Payload QR: https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=%%7B%%22uuid%%22:%%22%s%%22,%%22name%%22:%%22SmartNest%%20Board%%22%%7D\n", NODE_ID);
   Serial.println("====================================\n");
 }
 
