@@ -970,20 +970,7 @@ export default function ProvisioningScreen({ route, navigation }) {
               </View>
             )}
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Device Type</Text>
-              <TextInput
-                value={deviceType}
-                onChangeText={setDeviceType}
-                mode="outlined"
-                textColor="#FFFFFF"
-                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                style={styles.input}
-                placeholder="Enter device type (e.g. light, fan, ac)"
-                placeholderTextColor={TOKENS.textSecondary}
-                autoCapitalize="none"
-              />
-            </View>
+
 
             {renderRoomSummaryAndBoardField()}
 
@@ -1209,20 +1196,7 @@ export default function ProvisioningScreen({ route, navigation }) {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Device Type</Text>
-              <TextInput
-                value={deviceType}
-                onChangeText={setDeviceType}
-                mode="outlined"
-                textColor="#FFFFFF"
-                theme={{ colors: { primary: TOKENS.accent, background: TOKENS.surfaceLow } }}
-                style={styles.input}
-                placeholder="Enter device type (e.g. light, fan, ac)"
-                placeholderTextColor={TOKENS.textSecondary}
-                autoCapitalize="none"
-              />
-            </View>
+
 
             {renderRoomSummaryAndBoardField()}
 
