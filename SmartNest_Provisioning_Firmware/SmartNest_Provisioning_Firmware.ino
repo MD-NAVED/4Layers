@@ -38,6 +38,7 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include <WebServer.h>
 
 // ==========================================
 // 🔧 CONFIGURATION (GLOBAL SETTINGS)
@@ -74,6 +75,7 @@ char status_topic[100];
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 Preferences preferences;
+WebServer server(80);
 
 // BLE Onboarding Configurations
 #define SERVICE_UUID           "0000ffe0-0000-1000-8000-00805f9b34fb"
@@ -299,31 +301,64 @@ class DeviceIdWriteCallback: public BLECharacteristicCallbacks {
     }
 };
 
-// --- Start Local Config BLE Server ---
+// --- Start Local Config BLE & SoftAP Server ---
 void startSetupPortal() {
   inSetupMode = true;
   char portalSSID[50];
   snprintf(portalSSID, sizeof(portalSSID), "SmartNest-Setup-%s", NODE_ID + 8);
 
-  Serial.println("\n--- [BLE SETUP MODE ACTIVE] ---");
-  Serial.print("BLE Device Name: ");
+  Serial.println("\n--- [SETUP MODE ACTIVE (BLE & SOFTAP)] ---");
+  Serial.print("SSID/Device Name: ");
   Serial.println(portalSSID);
-  Serial.println("---------------------------------\n");
+  Serial.println("-----------------------------------------\n");
 
   // Keep Status LED ON during Setup Mode
   digitalWrite(STATUS_LED, HIGH);
 
-  // Initialize BLE Device
+  // 1. Initialize WiFi Access Point (SoftAP)
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(portalSSID); // default IP: 192.168.4.1
+  Serial.print("SoftAP Hotspot active. IP Address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // 2. Set Up HTTP Web Server route for SoftAP config URL
+  server.on("/config", HTTP_GET, []() {
+    String ssid_param = server.arg("ssid");
+    String pass_param = server.arg("pass");
+    
+    if (ssid_param.length() > 0) {
+      Serial.println("\n[SoftAP] Received WiFi credentials via Web Server!");
+      Serial.printf("SSID: %s\n", ssid_param.c_str());
+      
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", ssid_param);
+      preferences.putString("pass", pass_param);
+      preferences.end();
+      
+      // Return HTTP response success to app
+      server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Credentials saved. Rebooting...\"}");
+      
+      delay(500);
+      shouldReboot = true;
+    } else {
+      server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing SSID parameter.\"}");
+    }
+  });
+  
+  server.begin();
+  Serial.println("HTTP Web Config Server started successfully.");
+
+  // 3. Initialize BLE Device
   BLEDevice::init(portalSSID);
   
-  // Create Server
+  // Create BLE Server
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
-  // Create Service
+  // Create BLE Service
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  // Create Characteristics
+  // Create BLE Characteristics
   BLECharacteristic *pWifiChar = pService->createCharacteristic(
                                          WIFI_CHAR_UUID,
                                          BLECharacteristic::PROPERTY_WRITE
@@ -342,10 +377,10 @@ void startSetupPortal() {
                                        );
   pDevIdChar->setCallbacks(new DeviceIdWriteCallback());
 
-  // Start Service
+  // Start BLE Service
   pService->start();
 
-  // Start Advertising
+  // Start BLE Advertising
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
@@ -542,8 +577,9 @@ void setup() {
 
 void loop() {
   if (inSetupMode) {
+    server.handleClient(); // Handle HTTP server requests
     if (shouldReboot) {
-      Serial.println("[BLE] Rebooting board in 2 seconds...");
+      Serial.println("[Setup] Rebooting board in 2 seconds...");
       blinkLED(5, 100);
       delay(2000);
       ESP.restart();
