@@ -14,8 +14,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MQTT")
 
 # MQTT Configuration
-MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.emqx.io")
-MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_BROKER = os.getenv("MQTT_BROKER", "i26a1c71.ala.asia-southeast1.emqxsl.com")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "8883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "smartnest_client")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "D2m9ga8JynJDEM6")
 MQTT_KEEPALIVE = int(os.getenv("MQTT_KEEPALIVE", "60"))
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"smartnest_backend_{random.randint(10000, 99999)}")
 
@@ -24,6 +26,13 @@ publish_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="mqtt_p
 
 # Initialize global MQTT client
 client = mqtt.Client(client_id=MQTT_CLIENT_ID)
+
+if MQTT_USERNAME and MQTT_PASSWORD:
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+
+if MQTT_PORT == 8883:
+    # Enable secure TLS connection for EMQX Cloud Serverless
+    client.tls_set()
 
 def on_connect(client, userdata, flags, rc):
     """Callback when client connects to broker."""

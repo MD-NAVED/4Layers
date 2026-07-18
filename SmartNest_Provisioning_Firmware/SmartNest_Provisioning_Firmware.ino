@@ -30,6 +30,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -41,8 +42,10 @@
 // ==========================================
 // 🔧 CONFIGURATION (GLOBAL SETTINGS)
 // ==========================================
-const char* mqtt_server = "broker.emqx.io";
-const int mqtt_port = 1883;
+const char* mqtt_server = "i26a1c71.ala.asia-southeast1.emqxsl.com";
+const int mqtt_port = 8883;
+const char* mqtt_user = "smartnest_client";
+const char* mqtt_pass = "D2m9ga8JynJDEM6";
 
 // Pin Definitions matching Go Smart AIO V2 hardware
 const int RELAY_1 = 15;
@@ -68,7 +71,7 @@ char NODE_ID[32];
 char command_topic[100]; 
 char status_topic[100];  
 
-WiFiClient espClient;
+WiFiClientSecure espClient;
 PubSubClient client(espClient);
 Preferences preferences;
 
@@ -439,7 +442,7 @@ void reconnectMqtt() {
     Serial.print("Connecting to EMQX MQTT Broker...");
     String clientId = "SmartNestClient-" + String(NODE_ID);
     
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
       Serial.println("connected!");
       client.subscribe(command_topic);
       
@@ -520,6 +523,9 @@ void setup() {
       
       // Disable WiFi Sleep Mode to ensure instant MQTT message delivery (<10ms latency)
       WiFi.setSleep(false);
+      
+      // Bypasses certificate chain validation securely for EMQX Serverless TLS
+      espClient.setInsecure();
       
       // Initialize MQTT Broker Connection
       client.setServer(mqtt_server, mqtt_port);
