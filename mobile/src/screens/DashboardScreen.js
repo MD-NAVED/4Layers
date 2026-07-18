@@ -132,6 +132,13 @@ export default function DashboardScreen({ navigation }) {
             value: d.current_state?.value !== undefined ? d.current_state.value : (d.device_type === 'ac' ? 72 : 50)
           };
         });
+        
+        // Sort devices by node_id to ensure stable ordering in the dashboard
+        formattedList.sort((a, b) => {
+          if (!a.node_id || !b.node_id) return 0;
+          return a.node_id.localeCompare(b.node_id, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
         setDevices(formattedList);
         setHasError(false);
       } else {

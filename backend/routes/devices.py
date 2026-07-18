@@ -105,7 +105,7 @@ def get_devices(
     """Retrieve all devices owned by the authenticated user across all their homes."""
     return db.query(models.Device).join(models.Home).filter(
         models.Home.owner_id == current_user.id
-    ).all()
+    ).order_by(models.Device.node_id.asc()).all()
 
 @router.delete("/{device_id}", status_code=status.HTTP_200_OK)
 def remove_device(
