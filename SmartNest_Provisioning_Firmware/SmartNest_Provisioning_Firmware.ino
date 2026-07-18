@@ -518,6 +518,9 @@ void setup() {
       Serial.println(WiFi.localIP());
       digitalWrite(STATUS_LED, LOW); // turn off on success
       
+      // Disable WiFi Sleep Mode to ensure instant MQTT message delivery (<10ms latency)
+      WiFi.setSleep(false);
+      
       // Initialize MQTT Broker Connection
       client.setServer(mqtt_server, mqtt_port);
       client.setCallback(callback);
