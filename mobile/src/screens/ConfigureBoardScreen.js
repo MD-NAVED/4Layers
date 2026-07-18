@@ -180,7 +180,7 @@ export default function ConfigureBoardScreen({ route, navigation }) {
 
     try {
       await apiClient.post(`/api/devices/${slot.id}/control`, {
-        status: newStatus ? 'ON' : 'OFF'
+        state: { status: newStatus ? 'ON' : 'OFF' }
       });
     } catch (err) {
       console.warn('[ConfigureBoard] Test toggle failed:', err);
@@ -397,7 +397,8 @@ export default function ConfigureBoardScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TOKENS.bg
+    backgroundColor: TOKENS.bg,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 50
   },
   scrollContent: {
     padding: 16,
