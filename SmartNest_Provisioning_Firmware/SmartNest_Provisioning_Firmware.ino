@@ -368,8 +368,10 @@ void startSetupPortal() {
       preferences.putString("pass", pass_param);
       preferences.end();
       
-      // Return HTTP response success to app
-      server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Credentials saved. Rebooting...\"}");
+      // Return HTTP response success to app (including the generated unique node_id)
+      char responseBuf[128];
+      snprintf(responseBuf, sizeof(responseBuf), "{\"status\":\"success\",\"node_id\":\"%s\",\"message\":\"Credentials saved. Rebooting...\"}", NODE_ID);
+      server.send(200, "application/json", responseBuf);
       
       delay(500);
       shouldReboot = true;

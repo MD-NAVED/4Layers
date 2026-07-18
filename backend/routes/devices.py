@@ -430,14 +430,6 @@ def provision_device(
                 detail="This physical device is registered under another user's account"
             )
         
-        # If the device is already assigned to a room, do not allow re-assigning it dynamically
-        if device.room_id is not None:
-            room_name = device.room.name if device.room else "another room"
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"This hardware is already registered in '{room_name}'. Please delete that room or its devices first to re-provision it."
-            )
-        
         # Update room and name prefix for all 7 channels under this MAC
         if prefix:
             for cfg in channel_configs:
