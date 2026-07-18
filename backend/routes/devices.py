@@ -293,11 +293,11 @@ def bulk_control_devices(
             detail="No valid devices found or access denied"
         )
 
+    # Update all database states first to prevent race conditions on UI refresh
     for device in devices:
         previous_state = device.current_state or {}
         requested_state = control_data.state
 
-        # Update database state immediately to prevent race conditions on UI refresh
         updated_state = dict(previous_state)
         updated_state.update(requested_state)
         device.current_state = updated_state
@@ -311,17 +311,41 @@ def bulk_control_devices(
         )
         db.add(history_entry)
 
-        # Publish MQTT message
-        node_id_to_publish = device.node_id
-        payload_to_publish = requested_state
-        
+    # Group devices by base node ID to optimize MQTT commands
+    grouped_by_base = {}
+    for device in devices:
+        base_node_id = device.node_id
+        channel = 7
         if "_" in device.node_id:
             parts = device.node_id.rsplit('_', 1)
             if len(parts) == 2 and parts[1].isdigit():
                 base_node_id = parts[0]
                 channel = int(parts[1])
-                status_val = requested_state.get("status", "OFF")
-                
+        
+        if base_node_id not in grouped_by_base:
+            grouped_by_base[base_node_id] = []
+        grouped_by_base[base_node_id].append((device, channel))
+
+    # Publish optimized MQTT commands
+    for base_node_id, device_channel_pairs in grouped_by_base.items():
+        channels = [pair[1] for pair in device_channel_pairs]
+        requested_state = control_data.state
+        status_val = requested_state.get("status", "OFF")
+
+        if 7 in channels:
+            # Optimize: Only send a single Master Switch (channel 7) command!
+            # The firmware automatically applies this to all other channels.
+            payload_to_publish = {
+                "channel": 7,
+                "status": status_val
+            }
+            mqtt.publish_control_message(
+                node_id=base_node_id,
+                state=payload_to_publish
+            )
+        else:
+            # Publish individual channel control messages
+            for device, channel in device_channel_pairs:
                 payload_to_publish = {
                     "channel": channel,
                     "status": status_val
@@ -331,13 +355,11 @@ def bulk_control_devices(
                         payload_to_publish["speed"] = requested_state["value"]
                     else:
                         payload_to_publish["value"] = requested_state["value"]
-                        
-                node_id_to_publish = base_node_id
 
-        mqtt.publish_control_message(
-            node_id=node_id_to_publish,
-            state=payload_to_publish
-        )
+                mqtt.publish_control_message(
+                    node_id=base_node_id,
+                    state=payload_to_publish
+                )
 
     db.commit()
     return {"detail": f"Bulk control commands sent to {len(devices)} devices."}

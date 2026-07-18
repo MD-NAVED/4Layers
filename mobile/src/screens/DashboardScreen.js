@@ -194,7 +194,6 @@ export default function DashboardScreen({ navigation }) {
       await apiClient.post(`/api/devices/${id}/control`, {
         state: { status: nextStatus ? 'ON' : 'OFF' }
       });
-      fetchDevices(false);
     } catch (err) {
       console.warn("Failed to sync toggle with server MQTT:", err);
       setDevices((prev) => prev.map((d) => d.id === id ? { ...d, status: !nextStatus } : d));
@@ -217,7 +216,6 @@ export default function DashboardScreen({ navigation }) {
           value: nextVal 
         }
       });
-      fetchDevices(false);
     } catch (err) {
       console.warn("Failed to sync adjusted value with server:", err);
       setDevices((prev) => prev.map((d) => d.id === id ? { ...d, value: target.value } : d));
@@ -237,7 +235,6 @@ export default function DashboardScreen({ navigation }) {
         device_ids: deviceIds,
         state: { status: targetState }
       });
-      fetchDevices(false);
     } catch (err) {
       console.warn("Failed bulk control operation:", err);
       fetchDevices(true);
