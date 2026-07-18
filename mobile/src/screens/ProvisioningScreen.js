@@ -528,12 +528,12 @@ export default function ProvisioningScreen({ route, navigation }) {
       }
     });
 
-    // Auto-stop scan after 12 seconds
+    // Auto-stop scan after 36 seconds (3x increase)
     setTimeout(() => {
       manager.stopDeviceScan();
       setIsScanning(false);
       setStatusText('Scan finished.');
-    }, 12000);
+    }, 36000);
   };
 
   const startWifiProvisioning = async () => {
@@ -606,11 +606,11 @@ export default function ProvisioningScreen({ route, navigation }) {
       // Step 3: Registering on Cloud (with retry loop for internet reconnection after SoftAP hotspot disconnects)
       const isNewRoom = selectedRoomId === 'NEW';
       let provisionResponse = null;
-      let retries = 6; // Try up to 6 times (total ~18 seconds)
+      let retries = 18; // Try up to 18 times (3x increase, total ~54 seconds)
       
       while (retries > 0) {
         try {
-          setStatusText(`Registering on Cloud (Attempt ${7 - retries}/6)...`);
+          setStatusText(`Registering on Cloud (Attempt ${19 - retries}/18)...`);
           provisionResponse = await provisionDevice(
             nodeId, 
             deviceType.trim().toLowerCase(),
@@ -707,14 +707,30 @@ export default function ProvisioningScreen({ route, navigation }) {
       }));
 
       const isNewRoom = selectedRoomId === 'NEW';
-      const provisionResponse = await provisionDevice(
-        decodedMac, 
-        deviceType,
-        boardName,
-        isNewRoom ? null : selectedRoomId,
-        isNewRoom ? newRoomName : null,
-        isNewRoom ? newRoomType : 'living_room'
-      );
+      let provisionResponse = null;
+      let retries = 18; // Try up to 18 times (3x increase, total ~54 seconds)
+      
+      while (retries > 0) {
+        try {
+          setStatusText(`Registering on Cloud (Attempt ${19 - retries}/18)...`);
+          provisionResponse = await provisionDevice(
+            decodedMac, 
+            deviceType,
+            boardName,
+            isNewRoom ? null : selectedRoomId,
+            isNewRoom ? newRoomName : null,
+            isNewRoom ? newRoomType : 'living_room'
+          );
+          break; // Success!
+        } catch (apiErr) {
+          retries--;
+          if (retries === 0) {
+            throw apiErr; // Out of retries, bubble up error
+          }
+          console.log('[BLEProvisioning] Cloud registry attempt failed, retrying in 3s...', apiErr);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
       const generatedDeviceId = provisionResponse.id;
       setStatusText(`Cloud Registration complete: ${generatedDeviceId}`);
 
