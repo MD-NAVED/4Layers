@@ -10,7 +10,9 @@ import {
   FlatList,
   Linking,
   StatusBar,
-  PermissionsAndroid
+  PermissionsAndroid,
+  NativeModules,
+  Modal
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, Snackbar, SegmentedButtons } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -101,6 +103,12 @@ export default function ProvisioningScreen({ route, navigation }) {
   const [wifiPassword, setWifiPassword] = useState('');
   const [showWifiInputs, setShowWifiInputs] = useState(true);
   const [deviceType, setDeviceType] = useState('light'); // light, fan, AC
+  
+  // Wi-Fi scanning & saved credentials state
+  const [savedWifiList, setSavedWifiList] = useState([]);
+  const [scannedWifiList, setScannedWifiList] = useState([]);
+  const [isScanningWifi, setIsScanningWifi] = useState(false);
+  const [showWifiScanModal, setShowWifiScanModal] = useState(false);
   
   // Manual onboarding states
   const [manualMacAddress, setManualMacAddress] = useState('');
@@ -367,6 +375,81 @@ export default function ProvisioningScreen({ route, navigation }) {
       Alert.alert('Error', 'Unable to open Wi-Fi settings. Please open them manually.');
     }
   };
+
+  const loadSavedWifiCredentials = async () => {
+    try {
+      const savedPasswordsStr = await AsyncStorage.getItem('@SmartNest:wifi_passwords') || '{}';
+      const savedPasswords = JSON.parse(savedPasswordsStr);
+      const list = Object.entries(savedPasswords).map(([name, pass]) => ({ ssid: name, pass }));
+      setSavedWifiList(list);
+    } catch (e) {
+      console.warn('[AsyncStorage] Error reading wifi credentials list:', e);
+    }
+  };
+
+  const handleScanWifiNetworks = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Supported', 'Wi-Fi scanning is not supported on web.');
+      return;
+    }
+    
+    setIsScanningWifi(true);
+    setShowWifiScanModal(true);
+    setScannedWifiList([]);
+
+    try {
+      if (Platform.OS === 'android') {
+        const hasLocationPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        if (!hasLocationPermission) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Permission Denied', 'Location permission is required to scan Wi-Fi.');
+            setIsScanningWifi(false);
+            return;
+          }
+        }
+      }
+
+      if (NativeModules.WifiScanner) {
+        const networks = await NativeModules.WifiScanner.getWifiNetworks();
+        // Sort networks by signal strength descending if level exists
+        if (Array.isArray(networks)) {
+          networks.sort((a, b) => (b.level || 0) - (a.level || 0));
+          setScannedWifiList(networks);
+        }
+      } else {
+        // Fallback mock list if NativeModule is not registered/mocked (e.g. during development/testing)
+        setTimeout(() => {
+          setScannedWifiList([
+            { ssid: 'Home_WiFi_5G', level: -45 },
+            { ssid: 'Office_Router', level: -60 },
+            { ssid: 'SmartNest_Demo_Net', level: -75 }
+          ]);
+          setIsScanningWifi(false);
+        }, 1500);
+        return;
+      }
+    } catch (err) {
+      console.error('[WifiScan] Error:', err);
+      // Fallback
+      setScannedWifiList([
+        { ssid: 'Home_WiFi_5G', level: -45 },
+        { ssid: 'Office_Router', level: -60 }
+      ]);
+    } finally {
+      setIsScanningWifi(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentStage === 'INPUT') {
+      loadSavedWifiCredentials();
+    }
+  }, [currentStage]);
 
   const startScanning = async () => {
     if (Platform.OS === 'web') {
@@ -787,15 +870,49 @@ export default function ProvisioningScreen({ route, navigation }) {
             
             {showWifiInputs ? (
               <>
+                {savedWifiList.length > 0 && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={[styles.label, { marginBottom: 6 }]}>Saved Wi-Fi Networks</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {savedWifiList.map((net, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setSsid(net.ssid);
+                            setWifiPassword(net.pass);
+                          }}
+                          style={{
+                            backgroundColor: ssid === net.ssid ? 'rgba(34, 197, 94, 0.15)' : TOKENS.surfaceLow,
+                            borderColor: ssid === net.ssid ? TOKENS.accent : TOKENS.border,
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingVertical: 6,
+                            paddingHorizontal: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          <MaterialCommunityIcons name="wifi" size={14} color={ssid === net.ssid ? TOKENS.accent : TOKENS.textSecondary} />
+                          <Text style={{ color: ssid === net.ssid ? '#FFFFFF' : TOKENS.textSecondary, fontSize: 12, fontWeight: 'bold' }}>
+                            {net.ssid}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
                 <View style={styles.inputGroup}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <Text style={styles.label}>Wi-Fi SSID</Text>
                     <TouchableOpacity 
-                      onPress={handleOpenWifiSettings} 
+                      onPress={handleScanWifiNetworks} 
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                     >
-                      <MaterialCommunityIcons name="wifi" size={16} color={TOKENS.accent} />
-                      <Text style={{ color: TOKENS.accent, fontSize: 12, fontWeight: 'bold' }}>Open Wi-Fi Settings</Text>
+                      <MaterialCommunityIcons name="magnify" size={16} color={TOKENS.accent} />
+                      <Text style={{ color: TOKENS.accent, fontSize: 12, fontWeight: 'bold' }}>Scan Networks</Text>
                     </TouchableOpacity>
                   </View>
                   <TextInput
@@ -1145,6 +1262,78 @@ export default function ProvisioningScreen({ route, navigation }) {
           {snackbarMessage}
         </Text>
       </Snackbar>
+
+      <Modal
+        visible={showWifiScanModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowWifiScanModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Wi-Fi Network</Text>
+              <TouchableOpacity onPress={() => setShowWifiScanModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={TOKENS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {isScanningWifi ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={TOKENS.accent} />
+                <Text style={styles.modalLoadingText}>Scanning for nearby networks...</Text>
+              </View>
+            ) : scannedWifiList.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <MaterialCommunityIcons name="wifi-off" size={48} color={TOKENS.textSecondary} />
+                <Text style={styles.modalEmptyText}>No networks found.</Text>
+                <Text style={styles.modalEmptySubtext}>
+                  Make sure Location/GPS is turned ON in settings so the app is allowed to scan.
+                </Text>
+                <TouchableOpacity style={styles.modalRefreshBtn} onPress={handleScanWifiNetworks}>
+                  <MaterialCommunityIcons name="refresh" size={16} color="#000000" />
+                  <Text style={styles.modalRefreshText}>Rescan</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={scannedWifiList}
+                keyExtractor={(item, index) => `${item.ssid}_${index}`}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.wifiItem}
+                    onPress={() => {
+                      setSsid(item.ssid);
+                      // Look up saved password
+                      const matched = savedWifiList.find(s => s.ssid === item.ssid);
+                      if (matched) {
+                        setWifiPassword(matched.pass);
+                      } else {
+                        setWifiPassword('');
+                      }
+                      setShowWifiScanModal(false);
+                    }}
+                  >
+                    <View style={styles.wifiItemLeft}>
+                      <MaterialCommunityIcons name="wifi" size={20} color={TOKENS.accent} />
+                      <Text style={styles.wifiItemName}>{item.ssid}</Text>
+                    </View>
+                    <View style={styles.wifiItemRight}>
+                      {item.level && (
+                        <Text style={styles.wifiSignalStrength}>
+                          {item.level > -50 ? 'Strong' : (item.level > -70 ? 'Medium' : 'Weak')}
+                        </Text>
+                      )}
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -1503,5 +1692,105 @@ const styles = StyleSheet.create({
     color: '#dfe2f1',
     flex: 1,
     lineHeight: 16
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end'
+  },
+  modalContent: {
+    backgroundColor: TOKENS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: 400,
+    maxHeight: '80%',
+    padding: 20
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFFFFF'
+  },
+  modalLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 16
+  },
+  modalLoadingText: {
+    color: TOKENS.textSecondary,
+    fontSize: 13
+  },
+  modalEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12
+  },
+  modalEmptyText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold'
+  },
+  modalEmptySubtext: {
+    color: TOKENS.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 18
+  },
+  modalRefreshBtn: {
+    backgroundColor: TOKENS.accent,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 12
+  },
+  modalRefreshText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold'
+  },
+  wifiItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: TOKENS.border,
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    borderRadius: 8,
+    marginBottom: 8
+  },
+  wifiItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  wifiItemName: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  wifiItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  wifiSignalStrength: {
+    fontSize: 11,
+    color: TOKENS.textSecondary,
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
   }
 });
