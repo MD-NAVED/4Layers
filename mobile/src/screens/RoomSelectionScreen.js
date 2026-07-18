@@ -174,8 +174,39 @@ export default function RoomSelectionScreen({ navigation }) {
           <Text style={styles.mainSubtitle}>Choose an existing room or create a new room manually before pairing.</Text>
         </View>
 
-        {/* Option A: Existing Room Selection */}
+        {/* Tab Selection (only shown if there are existing rooms) */}
         {rooms.length > 0 && (
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setFlowMode('EXISTING')}
+              style={[styles.tabButton, flowMode === 'EXISTING' && styles.tabButtonActive]}
+            >
+              <MaterialCommunityIcons 
+                name="home-outline" 
+                size={18} 
+                color={flowMode === 'EXISTING' ? '#002112' : TOKENS.textSecondary} 
+              />
+              <Text style={[styles.tabText, flowMode === 'EXISTING' && styles.tabTextActive]}>Existing Room</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setFlowMode('NEW')}
+              style={[styles.tabButton, flowMode === 'NEW' && styles.tabButtonActive]}
+            >
+              <MaterialCommunityIcons 
+                name="plus" 
+                size={18} 
+                color={flowMode === 'NEW' ? '#002112' : TOKENS.textSecondary} 
+              />
+              <Text style={[styles.tabText, flowMode === 'NEW' && styles.tabTextActive]}>New Room</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Option A: Existing Room Selection */}
+        {flowMode === 'EXISTING' && rooms.length > 0 && (
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionLabel}>Select Destination Room</Text>
             <View style={styles.roomsGrid}>
@@ -204,6 +235,54 @@ export default function RoomSelectionScreen({ navigation }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Option B: New Custom Room Form */}
+        {(flowMode === 'NEW' || rooms.length === 0) && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionLabel}>Enter Room Details</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Custom Room Name</Text>
+              <TextInput
+                value={newRoomName}
+                onChangeText={handleRoomNameChange}
+                placeholder="e.g. Master Bedroom, Dining Hall"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                mode="outlined"
+                activeOutlineColor={TOKENS.accent}
+                outlineColor="#262626"
+                textColor="#FFFFFF"
+                style={styles.outlinedTextInput}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Room Category / Icon</Text>
+              <View style={styles.categoryGrid}>
+                {ROOM_TYPES.map((type) => {
+                  const isSelected = newRoomType === type.id;
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      activeOpacity={0.8}
+                      onPress={() => setNewRoomType(type.id)}
+                      style={[styles.categoryCard, isSelected && styles.categoryCardActive]}
+                    >
+                      <MaterialCommunityIcons 
+                        name={type.icon} 
+                        size={20} 
+                        color={isSelected ? '#002112' : TOKENS.textSecondary} 
+                      />
+                      <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelActive]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           </View>
         )}

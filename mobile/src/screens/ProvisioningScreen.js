@@ -844,6 +844,15 @@ export default function ProvisioningScreen({ route, navigation }) {
               </View>
             )}
 
+            {showWifiInputs && (
+              <View style={[styles.warningBox, { marginTop: 8, marginBottom: 12, backgroundColor: 'rgba(34, 197, 94, 0.03)', borderColor: 'rgba(255,255,255,0.05)' }]}>
+                <MaterialCommunityIcons name="help-circle-outline" size={16} color={TOKENS.accent} style={{ marginTop: 1 }} />
+                <Text style={[styles.warningText, { fontSize: 11, color: TOKENS.textSecondary, lineHeight: 15 }]}>
+                  Tip: Phone settings me Wi-Fi connect karne ke baad manually back daba kar app me lautein. Auto-detect ke liye system location (GPS) ON hona zaroori hai. Agar detect na ho, toh aap manually Wi-Fi SSID name type kar sakte hain!
+                </Text>
+              </View>
+            )}
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Device Type</Text>
               <TextInput

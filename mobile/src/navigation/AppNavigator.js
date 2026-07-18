@@ -78,6 +78,36 @@ function HomeStackScreen() {
   );
 }
 
+const AddDeviceStack = createStackNavigator();
+
+function AddDeviceStackScreen() {
+  const theme = useTheme();
+  return (
+    <AddDeviceStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: theme.colors.background },
+      }}
+    >
+      <AddDeviceStack.Screen 
+        name="RoomSelection" 
+        component={RoomSelectionScreen} 
+        options={{ title: 'Select Room' }} 
+      />
+      <AddDeviceStack.Screen 
+        name="Provisioning" 
+        component={ProvisioningScreen} 
+        options={{ title: 'Provision Node' }} 
+      />
+      <AddDeviceStack.Screen 
+        name="ConfigureBoard" 
+        component={ConfigureBoardScreen} 
+        options={{ title: 'Configure Board' }} 
+      />
+    </AddDeviceStack.Navigator>
+  );
+}
+
 // Navigation structure
 export default function AppNavigator() {
   const theme = useTheme();
@@ -177,8 +207,8 @@ export default function AppNavigator() {
                 let iconName;
                 if (route.name === 'HomeTab') {
                   iconName = 'home-variant';
-                } else if (route.name === 'HistoryTab') {
-                  iconName = 'clock-digital';
+                } else if (route.name === 'AddDeviceTab') {
+                  iconName = 'plus-circle';
                 } else if (route.name === 'SchedulesTab') {
                   iconName = 'calendar-clock';
                 } else if (route.name === 'SettingsTab') {
@@ -214,9 +244,9 @@ export default function AppNavigator() {
               options={{ title: 'Home', headerShown: false }}
             />
             <Tab.Screen
-              name="HistoryTab"
-              component={HistoryScreen}
-              options={{ title: 'Event History' }}
+              name="AddDeviceTab"
+              component={AddDeviceStackScreen}
+              options={{ title: 'Add Device', headerShown: false }}
             />
             <Tab.Screen
               name="SchedulesTab"

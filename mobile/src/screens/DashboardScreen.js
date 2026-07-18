@@ -551,16 +551,6 @@ export default function DashboardScreen({ navigation }) {
           </View>}
 
       </ScrollView>
-      {/* Floating Action Button (FAB) to Add Device */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate("RoomSelection")}
-        accessibilityRole="button"
-        accessibilityLabel="Register New Appliance"
-      >
-        <MaterialCommunityIcons name="plus" size={28} color={TOKENS.bg} />
-      </TouchableOpacity>
     </SafeAreaView>;
 }
 const styles = StyleSheet.create({

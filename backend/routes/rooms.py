@@ -54,26 +54,7 @@ def get_rooms(
             detail="Home not found or access denied"
         )
         
-    rooms = db.query(models.Room).filter(models.Room.home_id == home_id).all()
-    if not rooms:
-        default_rooms = [
-            {"name": "Living Room", "type": "living_room"},
-            {"name": "Bedroom", "type": "bedroom"},
-            {"name": "Kitchen", "type": "kitchen"},
-            {"name": "Balcony", "type": "living_room"},
-            {"name": "Gaming Room", "type": "living_room"}
-        ]
-        for r in default_rooms:
-            room = models.Room(
-                name=r["name"],
-                room_type=r["type"],
-                home_id=home_id
-            )
-            db.add(room)
-        db.commit()
-        rooms = db.query(models.Room).filter(models.Room.home_id == home_id).all()
-        
-    return rooms
+    return db.query(models.Room).filter(models.Room.home_id == home_id).all()
 
 @router.delete("/{room_id}", status_code=status.HTTP_200_OK)
 def delete_room(
