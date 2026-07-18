@@ -192,7 +192,11 @@ def publish_control_message(node_id: str, state: dict):
     node_id_to_publish = node_id
     payload_to_publish = state
     
-    if "_" in node_id:
+    if "action" in state:
+        payload_to_publish = state
+        if "_" in node_id:
+            node_id_to_publish = node_id.rsplit('_', 1)[0]
+    elif "_" in node_id:
         parts = node_id.rsplit('_', 1)
         if len(parts) == 2 and parts[1].isdigit():
             base_node_id = parts[0]

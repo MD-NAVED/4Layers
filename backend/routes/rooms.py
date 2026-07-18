@@ -74,6 +74,21 @@ def delete_room(
             detail="Room not found or access denied"
         )
         
+    from backend import mqtt
+    
+    # Fetch all devices in the room to trigger remote factory reset
+    devices = db.query(models.Device).filter(models.Device.room_id == room_id).all()
+    unique_nodes = set()
+    for dev in devices:
+        node_id = dev.node_id
+        base_node = node_id.rsplit('_', 1)[0] if "_" in node_id else node_id
+        if base_node not in unique_nodes:
+            unique_nodes.add(base_node)
+            try:
+                mqtt.publish_control_message(base_node, {"action": "factory_reset"})
+            except Exception as e:
+                print(f"[Rooms] Failed to publish remote factory reset for {base_node}: {e}")
+                
     # Cascade delete all devices in this room
     db.query(models.Device).filter(models.Device.room_id == room_id).delete(synchronize_session=False)
     db.delete(room)

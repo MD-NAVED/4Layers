@@ -1,24 +1,28 @@
 /*
  * SmartNest Multi-Channel Production Firmware (7 Channels)
- * Target Microcontroller: ESP32 Dev Module
+ * Target Microcontroller: ESP32 Dev Module (Go Smart AIO V2 Compatible)
  * 
  * Features:
- *   1. Custom Local WebServer (SoftAP): Exposes a direct `/config` HTTP endpoint.
- *      The mobile app sends SSID/Password here to pair the board dynamically.
- *   2. Preferences Storage: Securely saves WiFi configurations in the ESP32 NVS flash.
- *   3. Manual Factory Reset Button: Hold the ESP32 physical BOOT button (GPIO 0) 
+ *   1. Preferences Storage: Securely saves WiFi configurations in the ESP32 NVS flash.
+ *   2. Manual Factory Reset Button: Hold the ESP32 physical BOOT button (GPIO 0) 
  *      for 3 seconds on startup to clear credentials and trigger Setup Mode.
- *   4. Unique Node ID Generation: Generates an MQTT client identifier using the MAC address.
- *   5. Multi-Channel MQTT Controls: Listens to toggles, fan speeds, and LED brightness.
+ *   3. Unique Node ID Generation: Generates an MQTT client identifier using the MAC address.
+ *   4. Multi-Channel MQTT Controls: Listens to toggles, fan speed relays, and master logical commands.
+ *   5. Remote MQTT Reset: Resets Wi-Fi credentials when receiving {"action": "factory_reset"}.
  * 
- * Pin Configuration mapping:
- *   - Channel 1 (Switch 1): Relay 1 connected to GPIO 12
- *   - Channel 2 (Switch 2): Relay 2 connected to GPIO 13
- *   - Channel 3 (Switch 3): Relay 3 connected to GPIO 14
- *   - Channel 4 (Switch 4): Relay 4 connected to GPIO 15
- *   - Channel 5 (Ceiling Fan): PWM speed driver on GPIO 16 (Speed 1-5 mapping)
- *   - Channel 6 (LED Strip): PWM brightness driver on GPIO 17 (0-100% dimming)
+ * Pin Configuration mapping (Go Smart AIO V2 Hardware):
+ *   - Channel 1 (Switch 1): Relay 1 connected to GPIO 15
+ *   - Channel 2 (Switch 2): Relay 2 connected to GPIO 5
+ *   - Channel 3 (Switch 3): Relay 3 connected to GPIO 4
+ *   - Channel 4 (Switch 4): Relay 4 connected to GPIO 22
+ *   - Channel 5 (Ceiling Fan Relays): 
+ *     * Speed 1 Relay: GPIO 21
+ *     * Speed 2 Relay: GPIO 19
+ *     * Speed 4 Relay: GPIO 18
+ *   - Channel 6 (LED Strip): Logical brightness dimming (no physical pin on AIO V2)
  *   - Channel 7 (Master Switch): Logical toggle for all channels combined.
+ *   - Onboard Status LED: GPIO 2
+ *   - Factory Reset Button: GPIO 0
  * 
  * Required Libraries (Install via Arduino Library Manager):
  *   - PubSubClient (by Nick O'Leary)
@@ -34,38 +38,24 @@
 #include <BLEServer.h>
 #include <BLE2902.h>
 
-// ESP32 Arduino Core Version 3.x Compatibility Layer
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
-  #define LEDC_SETUP(channel, freq, resolution) // handled by ledcAttachChannel
-  #define LEDC_ATTACH(pin, freq, resolution, channel) ledcAttachChannel(pin, freq, resolution, channel)
-  #define LEDC_WRITE(channel, duty) ledcWriteChannel(channel, duty)
-#else
-  #define LEDC_SETUP(channel, freq, resolution) ledcSetup(channel, freq, resolution)
-  #define LEDC_ATTACH(pin, freq, resolution, channel) ledcAttachPin(pin, channel)
-  #define LEDC_WRITE(channel, duty) ledcWrite(channel, duty)
-#endif
-
 // ==========================================
 // 🔧 CONFIGURATION (GLOBAL SETTINGS)
 // ==========================================
 const char* mqtt_server = "broker.emqx.io";
 const int mqtt_port = 1883;
 
-// Pin Definitions
-const int RELAY_1 = 12;
-const int RELAY_2 = 13;
-const int RELAY_3 = 14;
-const int RELAY_4 = 15;
-const int FAN_PWM = 16;
-const int LED_PWM = 17;
-const int STATUS_LED = 2;   // Onboard LED
-const int RESET_BUTTON = 0; // ESP32 physical BOOT button
+// Pin Definitions matching Go Smart AIO V2 hardware
+const int RELAY_1 = 15;
+const int RELAY_2 = 5;
+const int RELAY_3 = 4;
+const int RELAY_4 = 22;
 
-// PWM Properties for Fan and LED dimming
-const int pwmFreq = 5000;
-const int pwmResolution = 8; // 8-bit resolution (0-255)
-const int FAN_CHANNEL = 0;
-const int LED_CHANNEL = 1;
+const int FAN_SPEED_1 = 21;
+const int FAN_SPEED_2 = 19;
+const int FAN_SPEED_4 = 18;
+
+const int STATUS_LED = 2;   // Onboard LED
+const int RESET_BUTTON = 0; // ESP32 physical BOOT button (Active Low)
 
 // Device States
 bool relayStates[4] = {false, false, false, false};
@@ -157,24 +147,25 @@ void applyHardware() {
   digitalWrite(RELAY_3, relayStates[2] ? HIGH : LOW);
   digitalWrite(RELAY_4, relayStates[3] ? HIGH : LOW);
   
-  // Apply Fan speed (Speed 1-5 maps to PWM 50-255 duty cycle)
+  // Apply Fan speed relays combinations (matching Go Smart V2 speed steps)
+  digitalWrite(FAN_SPEED_1, LOW);
+  digitalWrite(FAN_SPEED_2, LOW);
+  digitalWrite(FAN_SPEED_4, LOW);
+  
   if (fanEnabled) {
-    int duty = map(fanSpeed, 1, 5, 50, 255);
-    LEDC_WRITE(FAN_CHANNEL, duty);
-  } else {
-    LEDC_WRITE(FAN_CHANNEL, 0);
-  }
-
-  // Apply LED brightness (0-100% maps to PWM 0-255 duty cycle)
-  if (ledEnabled) {
-    int duty = map(ledBrightness, 0, 100, 0, 255);
-    LEDC_WRITE(LED_CHANNEL, duty);
-  } else {
-    LEDC_WRITE(LED_CHANNEL, 0);
+    if (fanSpeed == 1) {
+      digitalWrite(FAN_SPEED_1, HIGH);
+    } else if (fanSpeed == 2) {
+      digitalWrite(FAN_SPEED_2, HIGH);
+    } else if (fanSpeed == 3) {
+      digitalWrite(FAN_SPEED_1, HIGH);
+      digitalWrite(FAN_SPEED_2, HIGH);
+    } else if (fanSpeed >= 4) {
+      digitalWrite(FAN_SPEED_4, HIGH);
+    }
   }
 }
 
-// --- Web Server Setup Mode Handler ---
 // --- Base64 Encoding Helper ---
 String base64Encode(String input) {
   const char lookup[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -281,7 +272,7 @@ class WifiWriteCallback: public BLECharacteristicCallbacks {
           preferences.putString("pass", receivedPass);
           preferences.end();
           
-          // Do NOT set shouldReboot = true here. Wait for the app to write the Device ID (UUID) first.
+          // Wait for the app to write the Device ID (UUID) before rebooting
         }
       }
     }
@@ -295,12 +286,11 @@ class DeviceIdWriteCallback: public BLECharacteristicCallbacks {
         Serial.print("[BLE] Decoded Cloud Device UUID: ");
         Serial.println(value);
         
-        // Save UUID to preferences (optional, for debugging or storage)
         preferences.begin("wifi", false);
         preferences.putString("uuid", value);
         preferences.end();
         
-        // Now that the handshake is complete, trigger the reboot!
+        // Handshake complete, trigger the reboot!
         shouldReboot = true;
       }
     }
@@ -341,7 +331,6 @@ void startSetupPortal() {
                                          MAC_CHAR_UUID,
                                          BLECharacteristic::PROPERTY_READ
                                        );
-  // Set read value (raw node ID)
   pMacChar->setValue(NODE_ID);
 
   BLECharacteristic *pDevIdChar = pService->createCharacteristic(
@@ -357,7 +346,7 @@ void startSetupPortal() {
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06);  // iPhone connection helper
+  pAdvertising->setMinPreferred(0x06);
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
 }
@@ -374,6 +363,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (error) {
     Serial.print("JSON Parse failed: ");
     Serial.println(error.c_str());
+    return;
+  }
+
+  // Handle Remote Factory Reset Trigger
+  if (doc.containsKey("action") && doc["action"] == "factory_reset") {
+    Serial.println("[MQTT] Remote Reset Command Received. Erasing credentials & rebooting...");
+    preferences.begin("wifi", false);
+    preferences.clear();
+    preferences.end();
+    delay(1000);
+    ESP.restart();
     return;
   }
 
@@ -401,7 +401,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
     sendChannelState(5, fanEnabled, fanSpeed);
   }
-  // LED Strip (Channel 6)
+  // LED Strip (Channel 6) - Logical
   else if (channel == 6) {
     ledEnabled = turnOn;
     if (doc.containsKey("value")) {
@@ -468,12 +468,9 @@ void setup() {
   pinMode(RELAY_3, OUTPUT);
   pinMode(RELAY_4, OUTPUT);
 
-  // Setup PWM channels for Fan and LED Dimming
-  LEDC_SETUP(FAN_CHANNEL, pwmFreq, pwmResolution);
-  LEDC_ATTACH(FAN_PWM, pwmFreq, pwmResolution, FAN_CHANNEL);
-  
-  LEDC_SETUP(LED_CHANNEL, pwmFreq, pwmResolution);
-  LEDC_ATTACH(LED_PWM, pwmFreq, pwmResolution, LED_CHANNEL);
+  pinMode(FAN_SPEED_1, OUTPUT);
+  pinMode(FAN_SPEED_2, OUTPUT);
+  pinMode(FAN_SPEED_4, OUTPUT);
 
   // Initial boot state is OFF
   applyHardware();
