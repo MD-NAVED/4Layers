@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
 from backend.database import engine, Base
 from backend.routes import users, devices, homes, rooms, schedules, alerts, history
 from backend import mqtt
@@ -15,10 +16,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS Middleware to allow client-side integrations (web panels, mobile apps)
+# Configure CORS Middleware using ALLOWED_ORIGINS env variables (e.g. for web panels, mobile clients)
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    allowed_origins = ["*"]  # Fallback to wildcard for local development
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -85,6 +92,22 @@ def check_schedules():
 # FastAPI Event Handlers
 @app.on_event("startup")
 def startup_event():
+    # Verify environment variables security
+    secret_key = os.getenv("SECRET_KEY")
+    database_url = os.getenv("DATABASE_URL")
+    
+    is_prod = False
+    if database_url and ("render.com" in database_url or "amazonaws.com" in database_url):
+        is_prod = True
+        
+    if is_prod:
+        if not secret_key or secret_key == "smartnest_super_secret_key_change_me_in_production":
+            import sys
+            import logging
+            logger = logging.getLogger("UVicorn")
+            logger.error("FATAL SECURITY ERROR: SECRET_KEY is not configured or uses insecure default fallback in production!")
+            sys.exit("SECRET_KEY security violation. Exiting server.")
+
     # Create database tables if they do not exist
     Base.metadata.create_all(bind=engine)
     print("Database tables initialized.")

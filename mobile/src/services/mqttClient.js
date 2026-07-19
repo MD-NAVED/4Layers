@@ -1,21 +1,32 @@
 import Paho from 'paho-mqtt';
 
-const MQTT_HOST = 'i26a1c71.ala.asia-southeast1.emqxsl.com';
-const MQTT_PORT = 8084;
-const MQTT_PATH = '/mqtt';
-const MQTT_USER = 'smartnest_client';
-const MQTT_PASS = 'D2m9ga8JynJDEM6';
-
 let pahoClient = null;
 let isConnected = false;
 let connectingPromise = null;
 let listeners = new Set();
+let dynamicCredentials = null;
 
-export const getMqttClient = () => {
-  if (pahoClient) return pahoClient;
+export const setMqttCredentials = (credentials) => {
+  dynamicCredentials = credentials;
+};
+
+export const connectMqtt = (credentials = null) => {
+  if (credentials) {
+    dynamicCredentials = credentials;
+  }
+
+  if (isConnected) return Promise.resolve(pahoClient);
+  if (connectingPromise) return connectingPromise;
+
+  const config = dynamicCredentials || {
+    broker_host: 'i26a1c71.ala.asia-southeast1.emqxsl.com',
+    broker_port: 8084,
+    username: 'smartnest_client',
+    password: 'D2m9ga8JynJDEM6' // Default fallback for dev/local environment
+  };
 
   const clientId = `SmartNest-App-${Math.random().toString(16).substr(2, 8)}`;
-  pahoClient = new Paho.Client(MQTT_HOST, MQTT_PORT, MQTT_PATH, clientId);
+  pahoClient = new Paho.Client(config.broker_host, Number(config.broker_port), '/mqtt', clientId);
 
   pahoClient.onConnectionLost = (responseObject) => {
     isConnected = false;
@@ -38,24 +49,16 @@ export const getMqttClient = () => {
     });
   };
 
-  return pahoClient;
-};
-
-export const connectMqtt = () => {
-  if (isConnected) return Promise.resolve(pahoClient);
-  if (connectingPromise) return connectingPromise;
-
-  const client = getMqttClient();
   connectingPromise = new Promise((resolve, reject) => {
-    client.connect({
+    pahoClient.connect({
       useSSL: true,
-      userName: MQTT_USER,
-      password: MQTT_PASS,
+      userName: config.username,
+      password: config.password,
       onSuccess: () => {
         isConnected = true;
         connectingPromise = null;
         console.log('[MQTT Client] Connected successfully over secure WebSockets!');
-        resolve(client);
+        resolve(pahoClient);
       },
       onFailure: (err) => {
         connectingPromise = null;

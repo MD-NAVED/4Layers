@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend import models, auth, schemas
+from backend.rate_limit import auth_rate_limiter
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
-@router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_rate_limiter)])
 def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     """Register a new user in the system."""
     # Check if username already exists
@@ -38,7 +39,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-@router.post("/login", response_model=schemas.TokenResponse)
+@router.post("/login", response_model=schemas.TokenResponse, dependencies=[Depends(auth_rate_limiter)])
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Authenticate user and return a JWT access token.
@@ -122,3 +123,14 @@ def change_password(
     current_user.hashed_password = auth.get_password_hash(password_data.new_password)
     db.commit()
     return {"message": "Password changed successfully"}
+
+@router.get("/mqtt-config", response_model=schemas.MqttConfigResponse)
+def get_mqtt_config(current_user: models.User = Depends(auth.get_current_user)):
+    """Retrieve dynamic MQTT broker credentials for WebSockets connection."""
+    from backend import mqtt
+    return {
+        "broker_host": mqtt.MQTT_BROKER,
+        "broker_port": mqtt.MQTT_PORT,
+        "username": mqtt.MQTT_USERNAME,
+        "password": mqtt.MQTT_PASSWORD
+    }

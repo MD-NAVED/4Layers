@@ -155,13 +155,27 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  const initMqttConnection = async () => {
+    try {
+      const response = await apiClient.get('/api/users/mqtt-config');
+      if (response.data) {
+        console.log('[Dashboard] Fetched dynamic MQTT credentials from server.');
+        await connectMqtt(response.data);
+      } else {
+        await connectMqtt();
+      }
+    } catch (e) {
+      console.warn('[Dashboard] Failed to fetch dynamic MQTT credentials, using fallbacks:', e);
+      await connectMqtt();
+    }
+  };
+
   useEffect(() => {
     fetchRoomsMapping();
     fetchUnreadAlertsCount();
     fetchProfile();
     
-    // Connect to MQTT broker dynamically on dashboard mount
-    connectMqtt().catch(err => console.warn('[MQTT] Connection failed:', err));
+    initMqttConnection();
     
     return () => {
       // Disconnect cleanly when leaving dashboard screen

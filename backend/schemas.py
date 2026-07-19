@@ -191,3 +191,11 @@ class EventHistoryResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+# --- MQTT Config Schema ---
+class MqttConfigResponse(BaseModel):
+    broker_host: str
+    broker_port: int
+    username: str
+    password: str
