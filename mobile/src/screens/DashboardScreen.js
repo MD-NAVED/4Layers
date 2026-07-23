@@ -16,12 +16,12 @@ import EnergyChart from "../components/EnergyChart";
 import BrandLogo from "../components/BrandLogo";
 import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttClient";
 const TOKENS = {
-  bg: "#131313",
-  cardBg: "#1E1E1E",
+  bg: "#0E0E0E",
+  cardBg: "#1C1B1B",
   accent: "#22C55E",
   border: "rgba(255, 255, 255, 0.05)",
-  textPrimary: "#DFE2F1",
-  textSecondary: "#BBC9CF",
+  textPrimary: "#E5E2E1",
+  textSecondary: "#9CA3AF",
   error: "#EF4444"
 };
 function CapsuleSwitch({ isEnabled, onToggle }) {

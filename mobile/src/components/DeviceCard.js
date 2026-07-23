@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Platform, Animated, Modal } f
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const TOKENS = {
-  bg: "#131313",
+  bg: "#0E0E0E",
   glassBg: "rgba(28, 27, 27, 0.7)",
   accentGreen: "#22C55E",
   accentInactive: "#4B5563",

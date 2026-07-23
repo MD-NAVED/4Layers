@@ -8,11 +8,11 @@ const theme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#22C55E',          // Brand Green
+    primary: '#22C55E',          // Image 1 Brand Green
     secondary: '#15803D',        // Secondary Darker Green
-    background: '#0D0D0D',       // Pure Dark Black
-    surface: '#1A1A1A',          // Dark Gray Card Surface
-    onSurface: '#FFFFFF',        // White text
+    background: '#0E0E0E',       // Image 1 Obsidian Dark Black
+    surface: '#1C1B1B',          // Image 1 Glass Card Surface
+    onSurface: '#E5E2E1',        // Image 1 Warm Off-White text
     onSurfaceVariant: '#9CA3AF',   // Muted gray text
     outline: '#262626',          // Muted border
     outlineVariant: '#333333',    // Dark border
@@ -21,7 +21,7 @@ const theme = {
     onErrorContainer: '#FCA5A5', // Soft red text
     elevation: {
       ...MD3DarkTheme.colors.elevation,
-      level1: '#1A1A1A',         // Card level 1
+      level1: '#1C1B1B',         // Card level 1
       level2: '#262626',         // Active state card overlay
     }
   },
