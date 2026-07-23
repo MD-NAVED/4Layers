@@ -15,13 +15,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
 const TOKENS = {
-  bg: '#0D0D0D',
-  surface: '#151515',
-  surfaceLow: '#1A1A1A',
+  bg: '#0E0E0E',
+  surface: '#1C1B1B',
+  surfaceLow: '#141414',
   accent: '#22C55E',
   border: 'rgba(255,255,255,0.08)',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A3A3A3',
+  textPrimary: '#E5E2E1',
+  textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
 

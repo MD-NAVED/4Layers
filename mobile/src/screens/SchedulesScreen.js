@@ -16,12 +16,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
 const TOKENS = {
-  bg: '#131313',
-  surface: '#1E1E1E',
+  bg: '#0E0E0E',
+  surface: '#1C1B1B',
   accent: '#22C55E',
   border: 'rgba(255,255,255,0.05)',
-  textPrimary: '#dfe2f1',
-  textSecondary: '#BBC9CF',
+  textPrimary: '#E5E2E1',
+  textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
 

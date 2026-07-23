@@ -220,7 +220,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#0E0E0E',
   },
   scrollContainer: {
     flexGrow: 1,

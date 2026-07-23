@@ -14,12 +14,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
 const TOKENS = {
-  bg: '#131313',           // Google Stitch background
-  surface: '#1E1E1E',      // surface-container
-  surfaceLow: '#18181B',   // surface-container-low
+  bg: '#0E0E0E',           // Google Stitch background
+  surface: '#1C1B1B',      // surface-container
+  surfaceLow: '#141414',   // surface-container-low
   accent: '#22C55E',       // Primary green
   border: 'rgba(255,255,255,0.05)',
-  textPrimary: '#dfe2f1',
+  textPrimary: '#E5E2E1',
   textSecondary: '#9CA3AF',
   error: '#EF4444'
 };
