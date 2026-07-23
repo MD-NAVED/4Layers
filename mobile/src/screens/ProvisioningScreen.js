@@ -1331,7 +1331,9 @@ const styles = StyleSheet.create({
     color: TOKENS.textPrimary
   },
   scrollContainer: {
-    padding: 16
+    padding: 16,
+    flexGrow: 1,
+    justifyContent: 'center'
   },
   card: {
     backgroundColor: TOKENS.surface,
