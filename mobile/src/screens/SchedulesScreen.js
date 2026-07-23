@@ -231,39 +231,29 @@ const normalizeTimeInput = (raw) => {
   const handleDeleteSchedule = (scheduleId) => {
     Alert.alert(
       'Remove Schedule',
-      'Are you sure you want to delete this schedule?',
+      'Are you sure you want to delete this schedule rule?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            // Optimistically remove from UI state immediately for instant feedback
+            setSchedules(prev => prev.filter(s => s.id !== scheduleId));
+
             try {
-              setIsLoading(true);
               await apiClient.delete(`/api/schedules/${scheduleId}`);
-              const schedsRes = await apiClient.get('/api/schedules');
-              setSchedules(schedsRes.data);
-              Alert.alert('Deleted', 'Schedule has been removed.');
             } catch (error) {
               console.error('Failed to delete schedule:', error);
-              Alert.alert('Error', 'Failed to delete schedule');
-            } finally {
-              setIsLoading(false);
+              // Re-sync on failure
+              const schedsRes = await apiClient.get('/api/schedules');
+              setSchedules(schedsRes.data);
+              Alert.alert('Error', 'Failed to delete schedule from server.');
             }
           }
         }
       ]
     );
-  };
-
-  const handleRunScheduleNow = async (scheduleId) => {
-    try {
-      await apiClient.post(`/api/schedules/${scheduleId}/run`);
-      Alert.alert('Automation Success', 'MQTT trigger message fired successfully!');
-    } catch (error) {
-      console.error('Failed to manually run schedule:', error);
-      Alert.alert('Execution Failed', 'Failed to dispatch immediate schedule command');
-    }
   };
 
   const getDeviceName = (deviceId) => {
@@ -385,11 +375,8 @@ const normalizeTimeInput = (raw) => {
               <View style={styles.cardBottomRow}>
                 {renderDaysList(item.days)}
                 <View style={styles.cardActions}>
-                  <TouchableOpacity onPress={() => handleRunScheduleNow(item.id)} style={styles.cardActionBtn}>
-                    <MaterialCommunityIcons name="play" size={16} color={TOKENS.accent} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteSchedule(item.id)} style={styles.cardActionBtn}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={TOKENS.error} />
+                  <TouchableOpacity onPress={() => handleDeleteSchedule(item.id)} style={styles.cardActionBtn} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={TOKENS.error} />
                   </TouchableOpacity>
                 </View>
               </View>
