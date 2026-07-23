@@ -35,15 +35,15 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
   if (device?.node_id?.includes("_")) {
     const suffix = parseInt(device.node_id.split("_").pop(), 10);
     nodeNum = suffix;
-    if (suffix === 5) nodeLabel = "S-5";
-    else if (suffix === 6) nodeLabel = "S-6";
+    if (suffix === 5) nodeLabel = "Fan";
+    else if (suffix === 6) nodeLabel = "Dimmer";
     else if (suffix === 7) nodeLabel = "Master Switch";
-    else nodeLabel = `S-${suffix}`;
+    else nodeLabel = `Switch ${suffix}`;
   } else if (device?.type === "fan") {
-    nodeLabel = "S-5";
+    nodeLabel = "Fan";
     nodeNum = 5;
   } else if (device?.type === "light") {
-    nodeLabel = "S-6";
+    nodeLabel = "Dimmer";
     nodeNum = 6;
   } else if (device?.type === "master") {
     nodeLabel = "Master Switch";
@@ -263,8 +263,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: TOKENS.accentGreen,
-    letterSpacing: 1.5,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+    letterSpacing: 0.5
   },
 
   /* Gear Icon Button */
