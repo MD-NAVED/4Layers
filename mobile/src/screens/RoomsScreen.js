@@ -226,34 +226,7 @@ export default function RoomsScreen() {
                 placeholderTextColor={TOKENS.textSecondary}
               />
 
-              <Text style={styles.label}>Room Category</Text>
-              <View style={styles.typeGrid}>
-                {ROOM_TYPES.map((type) => {
-                  const isSelected = selectedType === type.id;
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[
-                        styles.typeCard,
-                        isSelected && styles.typeCardSelected
-                      ]}
-                      onPress={() => setSelectedType(type.id)}
-                    >
-                      <MaterialCommunityIcons 
-                        name={type.icon} 
-                        size={24} 
-                        color={isSelected ? TOKENS.bg : TOKENS.accent} 
-                      />
-                      <Text style={[
-                        styles.typeLabel,
-                        isSelected && styles.typeLabelSelected
-                      ]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity

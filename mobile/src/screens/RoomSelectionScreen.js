@@ -259,31 +259,6 @@ export default function RoomSelectionScreen({ navigation }) {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Room Category / Icon</Text>
-              <View style={styles.categoryGrid}>
-                {ROOM_TYPES.map((type) => {
-                  const isSelected = newRoomType === type.id;
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      activeOpacity={0.8}
-                      onPress={() => setNewRoomType(type.id)}
-                      style={[styles.categoryCard, isSelected && styles.categoryCardActive]}
-                    >
-                      <MaterialCommunityIcons 
-                        name={type.icon} 
-                        size={20} 
-                        color={isSelected ? '#002112' : TOKENS.textSecondary} 
-                      />
-                      <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
           </View>
         )}
 
