@@ -79,7 +79,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     nodeNum = suffix;
     if (suffix === 5) nodeLabel = "S-5";
     else if (suffix === 6) nodeLabel = "S-6";
-    else if (suffix === 7) nodeLabel = "M-S";
+    else if (suffix === 7) nodeLabel = "Master Switch";
     else nodeLabel = `S-${suffix}`;
   } else if (device?.type === "fan") {
     nodeLabel = "S-5";
@@ -88,7 +88,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     nodeLabel = "S-6";
     nodeNum = 6;
   } else if (device?.type === "master") {
-    nodeLabel = "M-S";
+    nodeLabel = "Master Switch";
     nodeNum = 7;
   }
 
@@ -97,14 +97,14 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
   const isDimmer = nodeNum === 6 || (device?.type === "light" && (device?.name?.toLowerCase().includes("strip") || device?.name?.toLowerCase().includes("dim")));
   const hasSettings = isFan || isDimmer;
 
-  // 1. Full-Width M-S (Room Master Switch) Header Card
+  // 1. Full-Width Master Switch Card Layout (Big Prominent Title)
   if (isMaster) {
     return (
       <View style={styles.fullWidthMasterCard}>
         <View style={styles.masterCardRow}>
           <View style={styles.masterTextGroup}>
-            <Text style={styles.nodeTagText}>M-S</Text>
-            <Text style={styles.masterSubtitleText}>Room Master Switch</Text>
+            <Text style={styles.masterTitleProminent}>Master Switch</Text>
+            <Text style={styles.masterSubtitleText}>Toggle all room appliances</Text>
           </View>
           <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
         </View>
@@ -266,13 +266,13 @@ const styles = StyleSheet.create({
     borderColor: TOKENS.border
   },
 
-  /* Full Width Master Card (M-S Room Master) */
+  /* Full Width Master Card (Master Switch Room Master) */
   fullWidthMasterCard: {
     width: "100%",
     backgroundColor: TOKENS.glassBg,
     borderRadius: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 22,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: TOKENS.border
@@ -283,13 +283,20 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   masterTextGroup: {
-    flex: 1
+    flex: 1,
+    marginRight: 12
+  },
+  masterTitleProminent: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: TOKENS.accentGreen,
+    letterSpacing: 0.5,
+    marginBottom: 4
   },
   masterSubtitleText: {
     fontSize: 12,
     fontWeight: "600",
-    color: TOKENS.textSecondary,
-    marginTop: 4
+    color: TOKENS.textSecondary
   },
   nodeTagText: {
     fontSize: 12,
