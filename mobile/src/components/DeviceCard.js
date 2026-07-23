@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   /* Grid Card (S-1 to S-6) */
   gridGlassCard: {
     width: "48%",
-    height: 188,
+    height: 206,
     backgroundColor: TOKENS.glassBg,
     borderRadius: 24,
     paddingTop: 14,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   /* Gear Icon Button */
   gearButton: {
     position: "absolute",
-    bottom: 10,
+    bottom: 12,
     alignSelf: "center",
     width: 28,
     height: 28,
