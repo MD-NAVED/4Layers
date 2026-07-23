@@ -8,7 +8,7 @@ const theme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#8BA49A',          // Muted Sage Green (#8BA49A)
+    primary: '#22C55E',          // Brand Dark Emerald Green (#22C55E)
     secondary: '#15803D',        // Secondary Darker Green
     background: '#0E0E0E',       // Image 1 Obsidian Dark Black
     surface: '#1C1B1B',          // Image 1 Glass Card Surface
