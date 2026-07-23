@@ -1,14 +1,14 @@
-import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Platform } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { StyleSheet, Text, View, TouchableOpacity, Platform, Animated } from "react-native";
 
 const TOKENS = {
   bg: "#121212",
   cardBg: "#1C1C1E",
-  cardBgActive: "#242428",
-  accentPurple: "#A855F7",
+  cardBgActive: "#24242A",
   accentGreen: "#22C55E",
+  accentPurple: "#A855F7",
   border: "rgba(255, 255, 255, 0.06)",
-  borderActive: "rgba(168, 85, 247, 0.4)",
+  borderActive: "rgba(34, 197, 94, 0.4)",
   textPrimary: "#F3F4F6",
   textSecondary: "#9CA3AF",
   error: "#EF4444"
@@ -17,8 +17,20 @@ const TOKENS = {
 export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
   const isLarge = size === "large";
   const width = isLarge ? 56 : 46;
-  const height = isLarge ? 92 : 76;
-  const borderRadius = isLarge ? 28 : 23;
+  const height = isLarge ? 96 : 80;
+  const borderRadius = isLarge ? 28 : 24;
+
+  // Animated 3D Tilt Offset (translateY)
+  const tiltAnim = useRef(new Animated.Value(isEnabled ? -4 : 4)).current;
+
+  useEffect(() => {
+    Animated.spring(tiltAnim, {
+      toValue: isEnabled ? -4 : 4,
+      friction: 6,
+      tension: 100,
+      useNativeDriver: true
+    }).start();
+  }, [isEnabled]);
 
   return (
     <TouchableOpacity
@@ -32,34 +44,35 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
       accessibilityRole="switch"
       accessibilityState={{ checked: isEnabled }}
     >
-      {/* Top half: ON */}
-      <View
+      {/* 3D Animated Rocker Body */}
+      <Animated.View
         style={[
-          styles.rockerHalf,
-          { borderTopLeftRadius: borderRadius - 2, borderTopRightRadius: borderRadius - 2 },
-          isEnabled ? styles.rockerTopActive : styles.rockerTopInactive
+          styles.rockerBody,
+          {
+            borderRadius: borderRadius - 3,
+            transform: [{ translateY: tiltAnim }]
+          },
+          isEnabled ? styles.rockerBodyOn : styles.rockerBodyOff
         ]}
       >
+        {/* Top half: ON Label */}
         <Text style={[styles.rockerText, isEnabled ? styles.rockerTextOnActive : styles.rockerTextInactive]}>
           ON
         </Text>
-      </View>
 
-      {/* Divider Line */}
-      <View style={styles.rockerDivider} />
+        {/* Emissive Center Status LED Dot */}
+        <View
+          style={[
+            styles.centerLedDot,
+            isEnabled ? styles.centerLedDotOn : styles.centerLedDotOff
+          ]}
+        />
 
-      {/* Bottom half: OFF */}
-      <View
-        style={[
-          styles.rockerHalf,
-          { borderBottomLeftRadius: borderRadius - 2, borderBottomRightRadius: borderRadius - 2 },
-          !isEnabled ? styles.rockerBottomActive : styles.rockerBottomInactive
-        ]}
-      >
+        {/* Bottom half: OFF Label */}
         <Text style={[styles.rockerText, !isEnabled ? styles.rockerTextOffActive : styles.rockerTextInactive]}>
           OFF
         </Text>
-      </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -103,11 +116,11 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
           </Text>
         </View>
 
-        {/* 3D Rocker Switch */}
+        {/* 3D Animated Rocker Switch */}
         <RockerSwitch isEnabled={isEnabled} onToggle={onToggle} />
       </View>
 
-      {/* Adjuster controls for Light (dimmer) or Thermostat */}
+      {/* Adjuster controls for Light (dimmer), Thermostat, or Fan */}
       {(device?.type === "light" || device?.type === "thermostat" || device?.type === "fan") && (
         <View style={styles.adjusterRow}>
           <TouchableOpacity style={styles.adjustButton} onPress={onDecrease} activeOpacity={0.7}>
@@ -140,7 +153,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: TOKENS.border,
 
-    // Floating 3D Neumorphic Shadows
+    // Floating 3D Shadows
     ...Platform.select({
       ios: {
         shadowColor: "#000000",
@@ -158,7 +171,7 @@ const styles = StyleSheet.create({
     borderColor: TOKENS.borderActive,
     ...Platform.select({
       ios: {
-        shadowColor: TOKENS.accentPurple,
+        shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
         shadowRadius: 12
@@ -196,21 +209,22 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
 
-  /* 3D Rocker Switch Styling */
+  /* 3D Animated Rocker Switch Styling */
   rockerTrack: {
-    backgroundColor: "#141416",
+    backgroundColor: "#0E0E0E",
     padding: 3,
-    justifyContent: "space-between",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.08)"
   },
   rockerTrackOn: {
-    borderColor: TOKENS.accentPurple,
+    borderColor: TOKENS.accentGreen,
     ...Platform.select({
       ios: {
-        shadowColor: TOKENS.accentPurple,
+        shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
+        shadowOpacity: 0.6,
         shadowRadius: 8
       },
       android: {
@@ -221,37 +235,64 @@ const styles = StyleSheet.create({
   rockerTrackOff: {
     borderColor: "rgba(255, 255, 255, 0.05)"
   },
-  rockerHalf: {
-    flex: 1,
+  rockerBody: {
+    width: "100%",
+    height: "92%",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center"
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)"
   },
-  rockerTopActive: {
-    backgroundColor: TOKENS.accentPurple,
-    elevation: 4
+  rockerBodyOn: {
+    backgroundColor: "#202024",
+    ...Platform.select({
+      ios: {
+        shadowColor: TOKENS.accentGreen,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6
+      },
+      android: {
+        elevation: 4
+      }
+    })
   },
-  rockerTopInactive: {
-    backgroundColor: "transparent"
+  rockerBodyOff: {
+    backgroundColor: "#1C1B1B"
   },
-  rockerBottomActive: {
-    backgroundColor: "#28282C",
-    elevation: 2
+
+  /* Center Status LED Dot */
+  centerLedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
   },
-  rockerBottomInactive: {
-    backgroundColor: "transparent"
+  centerLedDotOn: {
+    backgroundColor: TOKENS.accentGreen,
+    ...Platform.select({
+      ios: {
+        shadowColor: TOKENS.accentGreen,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 6
+      },
+      android: {
+        elevation: 4
+      }
+    })
   },
-  rockerDivider: {
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginVertical: 1
+  centerLedDotOff: {
+    backgroundColor: "#4B5563"
   },
+
   rockerText: {
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.5
   },
   rockerTextOnActive: {
-    color: "#FFFFFF"
+    color: TOKENS.accentGreen
   },
   rockerTextOffActive: {
     color: "#D1D5DB"
