@@ -64,7 +64,12 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
             <Text style={styles.masterTitleProminent}>Master Switch</Text>
             <Text style={styles.masterSubtitleText}>Master control for this room</Text>
           </View>
-          <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
+          <VerticalCapsuleSwitch
+            isEnabled={isEnabled}
+            onToggle={onToggle}
+            orientation="horizontal"
+            size="normal"
+          />
         </View>
       </View>
     );
@@ -227,8 +232,8 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: TOKENS.glassBg,
     borderRadius: 24,
-    paddingVertical: 20,
-    paddingHorizontal: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: TOKENS.border

@@ -7,29 +7,44 @@ export default function VerticalCapsuleSwitch({
   onToggle,
   onTurnOn,
   onTurnOff,
-  size = "md"
+  size = "md",
+  orientation = "vertical"
 }) {
+  const isHorizontal = orientation === "horizontal";
+
   // Dimensions for specified variants:
   // sm: 72x160, radius 36
   // md: 96x210, radius 48
   // lg: 120x270, radius 60
-  // normal: 54x110, radius 27 (for compact 2-column grid cards)
-  let width = 96;
-  let height = 210;
-  let radius = 48;
+  // normal: 54x110, radius 27 (vertical) OR 110x46, radius 23 (horizontal)
+  let width = isHorizontal ? 110 : 96;
+  let height = isHorizontal ? 46 : 210;
+  let radius = isHorizontal ? 23 : 48;
 
-  if (size === "sm") {
-    width = 72;
-    height = 160;
-    radius = 36;
-  } else if (size === "lg") {
-    width = 120;
-    height = 270;
-    radius = 60;
-  } else if (size === "normal" || size === "compact") {
-    width = 54;
-    height = 110;
-    radius = 27;
+  if (!isHorizontal) {
+    if (size === "sm") {
+      width = 72;
+      height = 160;
+      radius = 36;
+    } else if (size === "lg") {
+      width = 120;
+      height = 270;
+      radius = 60;
+    } else if (size === "normal" || size === "compact") {
+      width = 54;
+      height = 110;
+      radius = 27;
+    }
+  } else {
+    if (size === "sm") {
+      width = 90;
+      height = 38;
+      radius = 19;
+    } else if (size === "lg") {
+      width = 130;
+      height = 54;
+      radius = 27;
+    }
   }
 
   // Animation values for smooth 350ms transition
@@ -64,7 +79,13 @@ export default function VerticalCapsuleSwitch({
     }
   };
 
-  const fontSize = size === "normal" ? 11 : width * 0.15;
+  const fontSize = isHorizontal ? 11 : (size === "normal" ? 11 : width * 0.15);
+
+  const gradStart = isHorizontal ? { x: 0, y: 0.5 } : { x: 0.5, y: 0 };
+  const gradEnd = isHorizontal ? { x: 1, y: 0.5 } : { x: 0.5, y: 1 };
+
+  const divStart = isHorizontal ? { x: 0.5, y: 0 } : { x: 0, y: 0.5 };
+  const divEnd = isHorizontal ? { x: 0.5, y: 1 } : { x: 1, y: 0.5 };
 
   return (
     <View style={[styles.outerContainer, { width, height, borderRadius: radius }]}>
@@ -77,12 +98,13 @@ export default function VerticalCapsuleSwitch({
             height,
             borderRadius: radius,
             borderColor: isEnabled ? "#22C55E" : "rgba(255,255,255,0.08)",
-            borderWidth: isEnabled ? 1.5 : 1
+            borderWidth: isEnabled ? 1.5 : 1,
+            flexDirection: isHorizontal ? "row" : "column"
           },
           isEnabled && styles.outerGlowOn
         ]}
       >
-        {/* TOP ZONE (ON) */}
+        {/* TOP / LEFT ZONE (ON) */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={handlePressOn}
@@ -92,8 +114,8 @@ export default function VerticalCapsuleSwitch({
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: activeOpacity }]}>
             <LinearGradient
               colors={["#16a34a", "#22C55E", "#15803d"]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
+              start={gradStart}
+              end={gradEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
@@ -102,8 +124,8 @@ export default function VerticalCapsuleSwitch({
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: inactiveOpacity }]}>
             <LinearGradient
               colors={["#111111", "#181818"]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
+              start={gradStart}
+              end={gradEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
@@ -119,14 +141,22 @@ export default function VerticalCapsuleSwitch({
           </Text>
         </TouchableOpacity>
 
-        {/* THIN HORIZONTAL DIVIDER LINE */}
-        <View style={styles.dividerContainer}>
+        {/* THIN DIVIDER LINE */}
+        <View
+          style={[
+            styles.dividerContainer,
+            {
+              height: isHorizontal ? "100%" : 1.5,
+              width: isHorizontal ? 1.5 : "100%"
+            }
+          ]}
+        >
           {/* Active Green Divider Line */}
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: activeOpacity }]}>
             <LinearGradient
               colors={["transparent", "rgba(34,197,94,0.6)", "transparent"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
+              start={divStart}
+              end={divEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
@@ -135,14 +165,14 @@ export default function VerticalCapsuleSwitch({
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: inactiveOpacity }]}>
             <LinearGradient
               colors={["transparent", "rgba(255,255,255,0.15)", "transparent"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
+              start={divStart}
+              end={divEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
         </View>
 
-        {/* BOTTOM ZONE (OFF) */}
+        {/* BOTTOM / RIGHT ZONE (OFF) */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={handlePressOff}
@@ -152,8 +182,8 @@ export default function VerticalCapsuleSwitch({
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: inactiveOpacity }]}>
             <LinearGradient
               colors={["#2a2a2a", "#242424", "#1e1e1e"]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
+              start={gradStart}
+              end={gradEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
@@ -162,8 +192,8 @@ export default function VerticalCapsuleSwitch({
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: activeOpacity }]}>
             <LinearGradient
               colors={["#181818", "#1a1a1a"]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
+              start={gradStart}
+              end={gradEnd}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
