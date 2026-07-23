@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import apiClient from "../api/client";
 import DeviceCard, { LuminaRockerSwitch } from "../components/DeviceCard";
 import EnergyChart from "../components/EnergyChart";
+import BrandLogo from "../components/BrandLogo";
 import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttClient";
 const TOKENS = {
   bg: "#131313",
@@ -331,8 +332,7 @@ export default function DashboardScreen({ navigation }) {
       {/* Premium Custom Top Bar */}
       <View style={styles.customHeader}>
         <View style={styles.logoGroup}>
-          <MaterialCommunityIcons name="layers" size={28} color={TOKENS.accent} />
-          <Text style={styles.logoText}>4Layers</Text>
+          <BrandLogo size="medium" color={TOKENS.accent} bg={TOKENS.bg} />
         </View>
         <View style={styles.headerRightGroup}>
           {/* Connection Status Badge */}
@@ -444,7 +444,12 @@ export default function DashboardScreen({ navigation }) {
           </View> : filteredDevices.length === 0 ? <View style={styles.statusBox}>
             <Text style={styles.statusText}>No devices in this room yet</Text>
           </View> : <View style={styles.gridContainer}>
-            {filteredDevices
+            {[...filteredDevices]
+              .sort((a, b) => {
+                const aIsM = a.node_id?.endsWith('_7') || a.type === 'master' ? 1 : 0;
+                const bIsM = b.node_id?.endsWith('_7') || b.type === 'master' ? 1 : 0;
+                return bIsM - aIsM;
+              })
               .map((device) => (
                 <DeviceCard
                   key={device.id}
