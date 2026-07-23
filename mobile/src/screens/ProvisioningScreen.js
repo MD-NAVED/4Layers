@@ -803,7 +803,13 @@ export default function ProvisioningScreen({ route, navigation }) {
         <Text style={styles.headerTitle}>Provision Node</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContainer,
+          currentStage === 'CHECKLIST' && { flexGrow: 1, justifyContent: 'center' }
+        ]} 
+        keyboardShouldPersistTaps="handled"
+      >
         
         {/* Onboarding Method Entry Selection */}
         {currentStage === 'ENTRY' && (
@@ -1331,9 +1337,7 @@ const styles = StyleSheet.create({
     color: TOKENS.textPrimary
   },
   scrollContainer: {
-    padding: 16,
-    flexGrow: 1,
-    justifyContent: 'center'
+    padding: 16
   },
   card: {
     backgroundColor: TOKENS.surface,
