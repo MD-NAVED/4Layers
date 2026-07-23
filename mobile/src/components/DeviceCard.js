@@ -206,7 +206,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
               </View>
             )}
 
-            {/* Dimmer Controls Modal Content */}
+            {/* Dimmer Controls Modal Content (- and + buttons) */}
             {isDimmer && (
               <View style={styles.modalControlGroup}>
                 <View style={styles.levelHeaderRow}>
@@ -216,7 +216,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
 
                 <View style={styles.dimmerAdjusterRow}>
                   <TouchableOpacity style={styles.adjustBtn} onPress={onDecrease} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="brightness-5" size={18} color={TOKENS.textPrimary} />
+                    <MaterialCommunityIcons name="minus" size={20} color={TOKENS.textPrimary} />
                   </TouchableOpacity>
 
                   <View style={styles.dimmerProgressBar}>
@@ -230,7 +230,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
                   </View>
 
                   <TouchableOpacity style={styles.adjustBtn} onPress={onIncrease} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="brightness-7" size={18} color={TOKENS.textPrimary} />
+                    <MaterialCommunityIcons name="plus" size={20} color={TOKENS.textPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     color: TOKENS.textSecondary
   },
 
-  /* Dimmer Controls in Modal */
+  /* Dimmer Controls in Modal (- and + buttons) */
   brightnessValueText: {
     fontSize: 16,
     fontWeight: "800",
@@ -424,9 +424,9 @@ const styles = StyleSheet.create({
     marginTop: 10
   },
   adjustBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#2A2A2A",
     alignItems: "center",
     justifyContent: "center",
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     padding: 4,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 0, // REMOVED OUTLINE BORDER LINE
+    borderWidth: 0,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -484,8 +484,8 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOn: {
-    backgroundColor: "rgba(34, 197, 94, 0.18)", // Solid Deep Recessed Socket
-    borderWidth: 0, // REMOVED OUTLINE BORDER LINE
+    backgroundColor: "rgba(34, 197, 94, 0.18)",
+    borderWidth: 0,
     ...Platform.select({
       ios: {
         shadowColor: TOKENS.accentGreen,
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOff: {
-    backgroundColor: "#171616", // Solid Dark Socket
-    borderWidth: 0 // REMOVED OUTLINE BORDER LINE
+    backgroundColor: "#171616",
+    borderWidth: 0
   },
   rockerInnerBody: {
     width: "100%",
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
-    borderWidth: 0 // REMOVED OUTLINE BORDER LINE
+    borderWidth: 0
   },
   rockerInnerBodyOn: {
     backgroundColor: "#2E2D2C"
