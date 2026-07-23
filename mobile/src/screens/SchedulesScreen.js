@@ -139,18 +139,62 @@ export default function SchedulesScreen() {
     }
   };
 
+const normalizeTimeInput = (raw) => {
+  if (!raw) return '08:00';
+  const clean = raw.trim().replace(/[^0-9:]/g, '');
+  if (!clean) return '08:00';
+
+  let hours = 8;
+  let minutes = 0;
+
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    let hStr = parts[0] || '0';
+    let mStr = parts[1] || '0';
+
+    hours = parseInt(hStr, 10);
+    if (isNaN(hours)) hours = 8;
+
+    if (mStr.length === 1) {
+      minutes = parseInt(mStr, 10) * 10;
+    } else {
+      minutes = parseInt(mStr, 10);
+      if (isNaN(minutes)) minutes = 0;
+    }
+  } else {
+    // Pure numbers (e.g. 8, 14, 830, 2200)
+    if (clean.length === 1 || clean.length === 2) {
+      hours = parseInt(clean, 10);
+      minutes = 0;
+    } else if (clean.length === 3) {
+      hours = parseInt(clean.substring(0, 1), 10);
+      minutes = parseInt(clean.substring(1, 3), 10);
+    } else if (clean.length >= 4) {
+      hours = parseInt(clean.substring(0, 2), 10);
+      minutes = parseInt(clean.substring(2, 4), 10);
+    }
+  }
+
+  // Bounds check (00-23 for hours, 00-59 for minutes)
+  if (isNaN(hours) || hours < 0) hours = 0;
+  if (hours > 23) hours = 23;
+  if (isNaN(minutes) || minutes < 0) minutes = 0;
+  if (minutes > 59) minutes = 59;
+
+  const hStr = hours.toString().padStart(2, '0');
+  const mStr = minutes.toString().padStart(2, '0');
+  return `${hStr}:${mStr}`;
+};
+
   const handleCreateSchedule = async () => {
     if (!selectedDeviceId) {
       Alert.alert('Validation Error', 'Please select a device');
       return;
     }
 
-    // Validate time format (HH:MM)
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(scheduleTime)) {
-      Alert.alert('Validation Error', 'Time must be in HH:MM 24h format (e.g. 08:30)');
-      return;
-    }
+    // Auto-normalize user input (e.g. 830 -> 08:30, 8 -> 08:00, 2200 -> 22:00)
+    const formattedTime = normalizeTimeInput(scheduleTime);
+    setScheduleTime(formattedTime);
 
     if (selectedDays.length === 0) {
       Alert.alert('Validation Error', 'Please select at least one day');
@@ -163,7 +207,7 @@ export default function SchedulesScreen() {
       await apiClient.post('/api/schedules', {
         device_id: selectedDeviceId,
         action: selectedAction,
-        time: scheduleTime,
+        time: formattedTime,
         days: daysCSV,
         enabled: true
       });
@@ -429,13 +473,24 @@ export default function SchedulesScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.label}>Time (24h format HH:MM)</Text>
+              <Text style={styles.label}>Time (Type 830, 8, 2200 or 08:30)</Text>
               <TextInput
                 style={styles.input}
                 value={scheduleTime}
-                onChangeText={setScheduleTime}
-                placeholder="e.g. 08:30, 22:00"
+                onChangeText={(txt) => {
+                  setScheduleTime(txt);
+                  if (txt.length === 4 && !txt.includes(':')) {
+                    const h = txt.substring(0, 2);
+                    const m = txt.substring(2, 4);
+                    if (parseInt(h, 10) <= 23 && parseInt(m, 10) <= 59) {
+                      setScheduleTime(`${h}:${m}`);
+                    }
+                  }
+                }}
+                onBlur={() => setScheduleTime(normalizeTimeInput(scheduleTime))}
+                placeholder="e.g. 830, 8, 2200, 08:30"
                 placeholderTextColor={TOKENS.textSecondary}
+                keyboardType="numbers-and-punctuation"
                 maxLength={5}
               />
 
