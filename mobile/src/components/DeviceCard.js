@@ -88,7 +88,14 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
           onPress={() => setModalVisible(true)}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="cog" size={16} color={TOKENS.accentGreen} />
+          <View style={{ width: 16, height: 16, justifyContent: "center", alignItems: "center" }}>
+            <MaterialCommunityIcons
+              name="cog"
+              size={16}
+              color={TOKENS.accentGreen}
+              style={{ textAlign: "center", textAlignVertical: "center", marginTop: Platform.OS === "android" ? -1 : 0 }}
+            />
+          </View>
         </TouchableOpacity>
       )}
 
@@ -213,7 +220,7 @@ const styles = StyleSheet.create({
   /* Grid Card (S-1 to S-6) */
   gridGlassCard: {
     width: "48%",
-    height: 206,
+    height: 180,
     backgroundColor: TOKENS.glassBg,
     borderRadius: 24,
     paddingTop: 14,
@@ -269,11 +276,11 @@ const styles = StyleSheet.create({
   /* Gear Icon Button */
   gearButton: {
     position: "absolute",
-    bottom: 12,
-    alignSelf: "center",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: 10,
+    right: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: "#201F1F",
     alignItems: "center",
     justifyContent: "center",
