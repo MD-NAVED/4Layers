@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, View, TouchableOpacity, Platform, Animated, Modal } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+import VerticalCapsuleSwitch from "./VerticalCapsuleSwitch";
+
 const TOKENS = {
   bg: "#0E0E0E",
   glassBg: "rgba(28, 27, 27, 0.7)",
@@ -13,57 +15,13 @@ const TOKENS = {
 };
 
 export function LuminaRockerSwitch({ isEnabled, onToggle, size = "normal" }) {
-  const isMaster = size === "master";
-  const isMedium = size === "medium";
-
-  // Dimensions
-  const width = isMaster ? 100 : isMedium ? 64 : 54;
-  const height = isMaster ? 170 : isMedium ? 116 : 104;
-  const borderRadius = isMaster ? 40 : isMedium ? 26 : 22;
-
-  // Animated 3D Tilt Offset (translateY)
-  const tiltAnim = useRef(new Animated.Value(isEnabled ? -4 : 4)).current;
-
-  useEffect(() => {
-    Animated.spring(tiltAnim, {
-      toValue: isEnabled ? -4 : 4,
-      friction: 6,
-      tension: 100,
-      useNativeDriver: true
-    }).start();
-  }, [isEnabled]);
-
+  const switchSize = size === "master" ? "md" : size === "medium" ? "sm" : "normal";
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onToggle}
-      style={[
-        styles.rockerOuterWell,
-        { width, height, borderRadius },
-        isEnabled ? styles.rockerOuterWellOn : styles.rockerOuterWellOff
-      ]}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: isEnabled }}
-    >
-      <Animated.View
-        style={[
-          styles.rockerInnerBody,
-          {
-            borderRadius: borderRadius - 4,
-            transform: [{ translateY: tiltAnim }]
-          },
-          isEnabled ? styles.rockerInnerBodyOn : styles.rockerInnerBodyOff
-        ]}
-      >
-        <Text style={[styles.labelCaps, isEnabled ? styles.labelOnActive : styles.labelInactive]}>
-          ON
-        </Text>
-        <View style={[styles.indicatorDot, isEnabled ? styles.indicatorDotOn : styles.indicatorDotOff]} />
-        <Text style={[styles.labelCaps, !isEnabled ? styles.labelOffActive : styles.labelInactive]}>
-          OFF
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
+    <VerticalCapsuleSwitch
+      isEnabled={isEnabled}
+      onToggle={onToggle}
+      size={switchSize}
+    />
   );
 }
 
