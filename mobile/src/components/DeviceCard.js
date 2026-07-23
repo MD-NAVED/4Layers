@@ -1,21 +1,25 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, Text, View, TouchableOpacity, Platform, Animated } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const TOKENS = {
-  bg: "#121212",
-  accentPurple: "#BB86FC",
+  bg: "#131313",
+  glassBg: "rgba(28, 27, 27, 0.7)",
   accentGreen: "#22C55E",
-  border: "rgba(255, 255, 255, 0.06)",
+  accentInactive: "#4B5563",
+  border: "rgba(255, 255, 255, 0.05)",
   textPrimary: "#E5E2E1",
-  textSecondary: "#9CA3AF",
-  error: "#EF4444"
+  textSecondary: "#9CA3AF"
 };
 
-export function RockerSwitch({ isEnabled, onToggle, size = "normal", accentColor = TOKENS.accentPurple }) {
-  const isLarge = size === "large";
-  const width = isLarge ? 64 : 52;
-  const height = isLarge ? 108 : 88;
-  const borderRadius = isLarge ? 32 : 26;
+export function LuminaRockerSwitch({ isEnabled, onToggle, size = "normal" }) {
+  const isMaster = size === "master";
+  const isMedium = size === "medium";
+
+  // Dimensions
+  const width = isMaster ? 110 : isMedium ? 64 : 60;
+  const height = isMaster ? 180 : isMedium ? 104 : 96;
+  const borderRadius = isMaster ? 44 : isMedium ? 26 : 24;
 
   // Animated 3D Tilt Offset (translateY)
   const tiltAnim = useRef(new Animated.Value(isEnabled ? -4 : 4)).current;
@@ -34,44 +38,28 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal", accentColor
       activeOpacity={0.85}
       onPress={onToggle}
       style={[
-        styles.rockerTrack,
+        styles.rockerOuterWell,
         { width, height, borderRadius },
-        isEnabled ? { borderColor: accentColor, shadowColor: accentColor } : styles.rockerTrackOff
+        isEnabled ? styles.rockerOuterWellOn : styles.rockerOuterWellOff
       ]}
       accessibilityRole="switch"
       accessibilityState={{ checked: isEnabled }}
     >
-      {/* 3D Animated Rocker Body */}
       <Animated.View
         style={[
-          styles.rockerBody,
+          styles.rockerInnerBody,
           {
-            borderRadius: borderRadius - 3,
+            borderRadius: borderRadius - 4,
             transform: [{ translateY: tiltAnim }]
           },
-          isEnabled ? styles.rockerBodyOn : styles.rockerBodyOff
+          isEnabled ? styles.rockerInnerBodyOn : styles.rockerInnerBodyOff
         ]}
       >
-        {/* Top half: ON Label */}
-        <Text
-          style={[
-            styles.rockerText,
-            isEnabled ? { color: accentColor, textShadowColor: accentColor, textShadowRadius: 6 } : styles.rockerTextInactive
-          ]}
-        >
+        <Text style={[styles.labelCaps, isEnabled ? styles.labelOnActive : styles.labelInactive]}>
           ON
         </Text>
-
-        {/* Emissive Center Status LED Dot */}
-        <View
-          style={[
-            styles.centerLedDot,
-            isEnabled ? { backgroundColor: accentColor, shadowColor: accentColor, shadowRadius: 6, opacity: 1 } : styles.centerLedDotOff
-          ]}
-        />
-
-        {/* Bottom half: OFF Label */}
-        <Text style={[styles.rockerText, !isEnabled ? styles.rockerTextOffActive : styles.rockerTextInactive]}>
+        <View style={[styles.indicatorDot, isEnabled ? styles.indicatorDotOn : styles.indicatorDotOff]} />
+        <Text style={[styles.labelCaps, !isEnabled ? styles.labelOffActive : styles.labelInactive]}>
           OFF
         </Text>
       </Animated.View>
@@ -82,120 +70,379 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal", accentColor
 export default function DeviceCard({ device, onToggle, onIncrease, onDecrease }) {
   const isEnabled = device?.status === true || device?.status === "ON";
 
-  // Formulate short minimal label (S-1, S-2, S-3, S-4, FAN, DIM, M-S)
-  let shortLabel = "DEV";
+  // Determine Node S-1 to S-6
+  let nodeLabel = "DEV";
+  let nodeNum = 0;
   if (device?.node_id?.includes("_")) {
-    const suffix = device.node_id.split("_").pop();
-    if (suffix === "1") shortLabel = "S-1";
-    else if (suffix === "2") shortLabel = "S-2";
-    else if (suffix === "3") shortLabel = "S-3";
-    else if (suffix === "4") shortLabel = "S-4";
-    else if (suffix === "5") shortLabel = "FAN";
-    else if (suffix === "6") shortLabel = "DIM";
-    else if (suffix === "7") shortLabel = "M-S";
-    else shortLabel = `S-${suffix}`;
+    const suffix = parseInt(device.node_id.split("_").pop(), 10);
+    nodeNum = suffix;
+    if (suffix === 5) nodeLabel = "S-5 (Fan)";
+    else if (suffix === 6) nodeLabel = "S-6 (Dimmer)";
+    else nodeLabel = `S-${suffix}`;
   } else if (device?.type === "fan") {
-    shortLabel = "FAN";
+    nodeLabel = "S-5 (Fan)";
+    nodeNum = 5;
   } else if (device?.type === "light") {
-    shortLabel = "DIM";
+    nodeLabel = "S-6 (Dimmer)";
+    nodeNum = 6;
   }
 
-  // Accent color selection (Purple by default as shown in Image 1)
-  const accentColor = TOKENS.accentPurple;
+  const isFan = nodeNum === 5 || device?.type === "fan";
+  const isDimmer = nodeNum === 6 || (device?.type === "light" && (device?.name?.toLowerCase().includes("strip") || device?.name?.toLowerCase().includes("dim")));
 
-  return (
-    <View style={styles.floatingUnit}>
-      {/* Centered Minimal Label (S-1, S-2, etc.) */}
-      <Text style={[styles.centeredLabel, isEnabled && { color: accentColor }]}>
-        {shortLabel}
-      </Text>
-
-      {/* Large Centered 3D Rocker Switch */}
-      <RockerSwitch isEnabled={isEnabled} onToggle={onToggle} accentColor={accentColor} />
-
-      {/* Adjuster controls for Light (dimmer), Thermostat, or Fan */}
-      {(device?.type === "light" || device?.type === "thermostat" || device?.type === "fan") && (
-        <View style={styles.adjusterRow}>
-          <TouchableOpacity style={styles.adjustButton} onPress={onDecrease} activeOpacity={0.7}>
-            <Text style={styles.adjustButtonText}>-</Text>
-          </TouchableOpacity>
-
-          <View style={styles.valueContainer}>
-            <Text style={styles.valueText}>
-              {device?.value || 0}
-              {device?.type === "light" ? "%" : device?.type === "fan" ? " spd" : "°F"}
-            </Text>
+  // 1. Full-Width S-5 (Fan) Card Layout
+  if (isFan) {
+    const speed = device?.value || 3;
+    return (
+      <View style={styles.fullWidthGlassCard}>
+        <View style={styles.cardTopRow}>
+          <Text style={styles.nodeTagText}>{nodeLabel}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <MaterialCommunityIcons
+              name="fan"
+              size={20}
+              color={isEnabled ? TOKENS.accentGreen : TOKENS.textSecondary}
+            />
           </View>
-
-          <TouchableOpacity style={styles.adjustButton} onPress={onIncrease} activeOpacity={0.7}>
-            <Text style={styles.adjustButtonText}>+</Text>
-          </TouchableOpacity>
         </View>
-      )}
+
+        <View style={styles.cardContentRow}>
+          <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
+
+          <View style={styles.fanControlGroup}>
+            <View style={styles.levelHeaderRow}>
+              <Text style={styles.subLabelCaps}>Speed Level</Text>
+              <Text style={styles.speedValueText}>{speed}</Text>
+            </View>
+
+            {/* 5 Speed Level Bars */}
+            <View style={styles.speedBarsRow}>
+              {[1, 2, 3, 4, 5].map((lvl) => {
+                const isActive = lvl <= speed && isEnabled;
+                const barHeights = [14, 20, 26, 32, 38];
+                return (
+                  <TouchableOpacity
+                    key={lvl}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (lvl > speed) onIncrease();
+                      else if (lvl < speed) onDecrease();
+                    }}
+                    style={[
+                      styles.speedBar,
+                      { height: barHeights[lvl - 1] },
+                      isActive ? styles.speedBarActive : styles.speedBarInactive
+                    ]}
+                  />
+                );
+              })}
+            </View>
+
+            <View style={styles.speedNumLabelsRow}>
+              <Text style={styles.speedNumText}>1</Text>
+              <Text style={styles.speedNumText}>2</Text>
+              <Text style={styles.speedNumText}>3</Text>
+              <Text style={styles.speedNumText}>4</Text>
+              <Text style={styles.speedNumText}>5</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // 2. Full-Width S-6 (Dimmer) Card Layout
+  if (isDimmer) {
+    const brightness = device?.value || 65;
+    return (
+      <View style={styles.fullWidthGlassCard}>
+        <View style={styles.cardTopRow}>
+          <Text style={styles.nodeTagText}>{nodeLabel}</Text>
+          <MaterialCommunityIcons
+            name="lightbulb-outline"
+            size={20}
+            color={isEnabled ? TOKENS.accentGreen : TOKENS.textSecondary}
+          />
+        </View>
+
+        <View style={styles.cardContentRow}>
+          <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
+
+          <View style={styles.dimmerControlGroup}>
+            <View style={styles.levelHeaderRow}>
+              <Text style={styles.subLabelCaps}>Brightness</Text>
+              <Text style={styles.brightnessValueText}>{brightness}%</Text>
+            </View>
+
+            {/* Dimmer Adjuster Row */}
+            <View style={styles.dimmerAdjusterRow}>
+              <TouchableOpacity style={styles.adjustBtn} onPress={onDecrease} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="brightness-5" size={16} color={TOKENS.textPrimary} />
+              </TouchableOpacity>
+
+              <View style={styles.dimmerProgressBar}>
+                <View
+                  style={[
+                    styles.dimmerProgressFill,
+                    { width: `${brightness}%` },
+                    isEnabled ? styles.fillActive : styles.fillInactive
+                  ]}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.adjustBtn} onPress={onIncrease} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="brightness-7" size={16} color={TOKENS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // 3. Grid S-1 to S-4 Cards Layout (2-Column Grid)
+  return (
+    <View style={styles.gridGlassCard}>
+      <Text style={styles.nodeTagText}>{nodeLabel}</Text>
+      <View style={{ marginTop: 12 }}>
+        <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="normal" />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  floatingUnit: {
+  /* Grid Card (S-1 to S-4) */
+  gridGlassCard: {
     width: "48%",
+    backgroundColor: TOKENS.glassBg,
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 16,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    marginBottom: 20,
-    backgroundColor: "transparent"
-  },
-  centeredLabel: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: TOKENS.textPrimary,
-    letterSpacing: 1.5,
-    marginBottom: 12,
-    textAlign: "center",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+    borderWidth: 1,
+    borderColor: TOKENS.border
   },
 
-  /* 3D Animated Rocker Switch Styling (Image 1 Specs) */
-  rockerTrack: {
+  /* Full Width Card (S-5 Fan & S-6 Dimmer) */
+  fullWidthGlassCard: {
+    width: "100%",
+    backgroundColor: TOKENS.glassBg,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: TOKENS.border
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  nodeTagText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: TOKENS.accentGreen,
+    letterSpacing: 1.5,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+  },
+  cardContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20
+  },
+
+  /* Fan Controls */
+  fanControlGroup: {
+    flex: 1
+  },
+  levelHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginBottom: 10
+  },
+  subLabelCaps: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: TOKENS.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1
+  },
+  speedValueText: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: TOKENS.accentGreen
+  },
+  speedBarsRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
+    height: 42,
+    marginBottom: 6
+  },
+  speedBar: {
+    flex: 1,
+    borderRadius: 6
+  },
+  speedBarActive: {
+    backgroundColor: TOKENS.accentGreen,
+    ...Platform.select({
+      ios: {
+        shadowColor: TOKENS.accentGreen,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 8
+      },
+      android: {
+        elevation: 6
+      }
+    })
+  },
+  speedBarInactive: {
+    backgroundColor: "#201F1F",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)"
+  },
+  speedNumLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 2
+  },
+  speedNumText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: TOKENS.textSecondary
+  },
+
+  /* Dimmer Controls */
+  dimmerControlGroup: {
+    flex: 1
+  },
+  brightnessValueText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: TOKENS.accentGreen,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+  },
+  dimmerAdjusterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 6
+  },
+  adjustBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#201F1F",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: TOKENS.border
+  },
+  dimmerProgressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: "#201F1F",
+    borderRadius: 4,
+    overflow: "hidden"
+  },
+  dimmerProgressFill: {
+    height: "100%",
+    borderRadius: 4
+  },
+  fillActive: {
+    backgroundColor: TOKENS.accentGreen
+  },
+  fillInactive: {
+    backgroundColor: TOKENS.accentInactive
+  },
+
+  /* 3D Vertical Rocker Switch Styling (HTML Spec Exact) */
+  rockerOuterWell: {
     backgroundColor: "#1C1B1B",
     padding: 3,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-
-    // Ambient Glow Effect
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
     ...Platform.select({
       ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.6,
+        shadowRadius: 10
+      },
+      android: {
+        elevation: 6
+      }
+    })
+  },
+  rockerOuterWellOn: {
+    borderColor: "rgba(34, 197, 94, 0.4)",
+    ...Platform.select({
+      ios: {
+        shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
-        shadowRadius: 16
+        shadowRadius: 12
       },
       android: {
         elevation: 8
       }
     })
   },
-  rockerTrackOff: {
+  rockerOuterWellOff: {
     borderColor: "rgba(255, 255, 255, 0.04)"
   },
-  rockerBody: {
+  rockerInnerBody: {
     width: "100%",
-    height: "92%",
+    height: "86%",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)"
   },
-  rockerBodyOn: {
-    backgroundColor: "#262525",
+  rockerInnerBodyOn: {
+    backgroundColor: "#353534"
+  },
+  rockerInnerBodyOff: {
+    backgroundColor: "#201F1F"
+  },
+
+  labelCaps: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+  },
+  labelOnActive: {
+    color: TOKENS.accentGreen
+  },
+  labelOffActive: {
+    color: "#E5E2E1"
+  },
+  labelInactive: {
+    color: "rgba(229, 226, 225, 0.2)"
+  },
+
+  indicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  indicatorDotOn: {
+    backgroundColor: TOKENS.accentGreen,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.6,
+        shadowColor: TOKENS.accentGreen,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
         shadowRadius: 8
       },
       android: {
@@ -203,67 +450,7 @@ const styles = StyleSheet.create({
       }
     })
   },
-  rockerBodyOff: {
-    backgroundColor: "#181717"
-  },
-
-  /* Emissive Center Status LED Dot */
-  centerLedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3
-  },
-  centerLedDotOff: {
-    backgroundColor: "#404040",
-    opacity: 0.4
-  },
-
-  rockerText: {
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
-  },
-  rockerTextOffActive: {
-    color: "#D1D5DB"
-  },
-  rockerTextInactive: {
-    color: "#3F3F46"
-  },
-
-  /* Minimal Adjuster row for Fan & Dimmer */
-  adjusterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#181717",
-    borderRadius: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 12,
-    width: "90%",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)"
-  },
-  adjustButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: "#262525",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  adjustButtonText: {
-    color: TOKENS.textPrimary,
-    fontSize: 14,
-    fontWeight: "800"
-  },
-  valueContainer: {
-    alignItems: "center"
-  },
-  valueText: {
-    color: TOKENS.textPrimary,
-    fontSize: 11,
-    fontWeight: "800"
+  indicatorDotOff: {
+    backgroundColor: "rgba(229, 226, 225, 0.2)"
   }
 });

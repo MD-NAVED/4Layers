@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import apiClient from "../api/client";
-import DeviceCard, { RockerSwitch } from "../components/DeviceCard";
+import DeviceCard, { LuminaRockerSwitch } from "../components/DeviceCard";
 import EnergyChart from "../components/EnergyChart";
 import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttClient";
 const TOKENS = {
@@ -427,23 +427,34 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Centered Floating 3D Master Switch (Image 1 Style) */}
+        {/* HTML Code Section 1: Master Switch Glass Card */}
         {filteredDevices.length > 0 && (
-          <View style={styles.masterUnit}>
-            <Text
-              style={[
-                styles.masterCenteredLabel,
-                filteredDevices.some(d => d.status) && { color: "#BB86FC" }
-              ]}
-            >
-              M-S
-            </Text>
-            <RockerSwitch 
-              isEnabled={filteredDevices.some(d => d.status)} 
-              onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))} 
-              size="large"
-              accentColor="#BB86FC"
-            />
+          <View style={styles.masterGlassCard}>
+            <View style={styles.masterCardHeaderRow}>
+              <View>
+                <Text style={styles.controlCenterTag}>CONTROL CENTER</Text>
+                <Text style={styles.masterCardTitle}>Master Switch</Text>
+              </View>
+              <View style={styles.activeBadgePill}>
+                <View
+                  style={[
+                    styles.activeBadgeDot,
+                    { backgroundColor: filteredDevices.some(d => d.status) ? TOKENS.accent : TOKENS.textSecondary }
+                  ]}
+                />
+                <Text style={styles.activeBadgeText}>
+                  {filteredDevices.some(d => d.status) ? "ALL ACTIVE" : "STANDBY"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ alignItems: "center", paddingVertical: 12 }}>
+              <LuminaRockerSwitch
+                isEnabled={filteredDevices.some(d => d.status)}
+                onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))}
+                size="master"
+              />
+            </View>
           </View>
         )}
 
@@ -1203,24 +1214,54 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5
   },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: TOKENS.border
-  },
-  masterUnit: {
+  masterGlassCard: {
     width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    marginVertical: 8
+    backgroundColor: "rgba(28, 27, 27, 0.7)",
+    borderRadius: 28,
+    padding: 24,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)"
   },
-  masterCenteredLabel: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#E5E2E1",
+  masterCardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  controlCenterTag: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "rgba(34, 197, 94, 0.7)",
     letterSpacing: 2,
-    marginBottom: 12,
+    marginBottom: 4,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+  },
+  masterCardTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: TOKENS.textPrimary
+  },
+  activeBadgePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(42, 42, 42, 0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)"
+  },
+  activeBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  activeBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: TOKENS.textPrimary,
+    letterSpacing: 1
   }
 });
