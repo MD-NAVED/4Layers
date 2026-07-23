@@ -465,14 +465,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
 
-  /* 3D Vertical Rocker Switch Styling */
+  /* 3D Vertical Rocker Switch Styling (HTML Spec Solid Recessed Well + Neon Glow) */
   rockerOuterWell: {
-    backgroundColor: "#1C1B1B",
-    padding: 3,
+    padding: 4,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1.5,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -486,36 +484,38 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOn: {
-    borderColor: "rgba(34, 197, 94, 0.4)",
+    backgroundColor: "rgba(34, 197, 94, 0.18)", // Solid Deep Recessed Well (Image 1 Style)
+    borderColor: "rgba(34, 197, 94, 0.6)",
     ...Platform.select({
       ios: {
         shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12
+        shadowOpacity: 0.7,
+        shadowRadius: 14
       },
       android: {
-        elevation: 8
+        elevation: 10
       }
     })
   },
   rockerOuterWellOff: {
-    borderColor: "rgba(255, 255, 255, 0.04)"
+    backgroundColor: "#171616", // Solid Dark Recessed Well
+    borderColor: "rgba(255, 255, 255, 0.05)"
   },
   rockerInnerBody: {
     width: "100%",
     height: "86%",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)"
   },
   rockerInnerBodyOn: {
-    backgroundColor: "#353534"
+    backgroundColor: "#2E2D2C"
   },
   rockerInnerBodyOff: {
-    backgroundColor: "#201F1F"
+    backgroundColor: "#1E1D1D"
   },
 
   labelCaps: {
@@ -525,7 +525,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
   },
   labelOnActive: {
-    color: TOKENS.accentGreen
+    color: TOKENS.accentGreen,
+    textShadowColor: TOKENS.accentGreen,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6
   },
   labelOffActive: {
     color: "#E5E2E1"
@@ -546,10 +549,10 @@ const styles = StyleSheet.create({
         shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 1,
-        shadowRadius: 8
+        shadowRadius: 10
       },
       android: {
-        elevation: 4
+        elevation: 6
       }
     })
   },
