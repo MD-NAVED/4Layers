@@ -17,9 +17,9 @@ export function LuminaRockerSwitch({ isEnabled, onToggle, size = "normal" }) {
   const isMedium = size === "medium";
 
   // Dimensions
-  const width = isMaster ? 110 : isMedium ? 64 : 60;
-  const height = isMaster ? 180 : isMedium ? 104 : 96;
-  const borderRadius = isMaster ? 44 : isMedium ? 26 : 24;
+  const width = isMaster ? 100 : isMedium ? 64 : 60;
+  const height = isMaster ? 160 : isMedium ? 104 : 96;
+  const borderRadius = isMaster ? 40 : isMedium ? 26 : 24;
 
   // Animated 3D Tilt Offset (translateY)
   const tiltAnim = useRef(new Animated.Value(isEnabled ? -4 : 4)).current;
@@ -70,7 +70,7 @@ export function LuminaRockerSwitch({ isEnabled, onToggle, size = "normal" }) {
 export default function DeviceCard({ device, onToggle, onIncrease, onDecrease }) {
   const isEnabled = device?.status === true || device?.status === "ON";
 
-  // Determine Node S-1 to S-6
+  // Determine Node S-1 to S-7
   let nodeLabel = "DEV";
   let nodeNum = 0;
   if (device?.node_id?.includes("_")) {
@@ -91,10 +91,26 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     nodeNum = 7;
   }
 
+  const isMaster = nodeNum === 7 || device?.type === "master";
   const isFan = nodeNum === 5 || device?.type === "fan";
   const isDimmer = nodeNum === 6 || (device?.type === "light" && (device?.name?.toLowerCase().includes("strip") || device?.name?.toLowerCase().includes("dim")));
 
-  // 1. Full-Width S-5 (Fan) Card Layout
+  // 1. Full-Width M-S (Room Master Switch) Layout (Option 1)
+  if (isMaster) {
+    return (
+      <View style={styles.fullWidthMasterCard}>
+        <View style={styles.masterCardRow}>
+          <View style={styles.masterTextGroup}>
+            <Text style={styles.nodeTagText}>M-S</Text>
+            <Text style={styles.masterSubtitleText}>Room Master Switch</Text>
+          </View>
+          <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
+        </View>
+      </View>
+    );
+  }
+
+  // 2. Full-Width S-5 (Fan) Card Layout
   if (isFan) {
     const speed = device?.value || 3;
     return (
@@ -155,7 +171,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     );
   }
 
-  // 2. Full-Width S-6 (Dimmer) Card Layout
+  // 3. Full-Width S-6 (Dimmer) Card Layout
   if (isDimmer) {
     const brightness = device?.value || 65;
     return (
@@ -204,7 +220,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     );
   }
 
-  // 3. Grid S-1 to S-4 Cards Layout (2-Column Grid)
+  // 4. Grid S-1 to S-4 Cards Layout (2-Column Grid)
   return (
     <View style={styles.gridGlassCard}>
       <Text style={styles.nodeTagText}>{nodeLabel}</Text>
@@ -228,6 +244,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: TOKENS.border
+  },
+
+  /* Full Width Master Card (M-S Room Master) */
+  fullWidthMasterCard: {
+    width: "100%",
+    backgroundColor: TOKENS.glassBg,
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: TOKENS.border
+  },
+  masterCardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  masterTextGroup: {
+    flex: 1
+  },
+  masterSubtitleText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: TOKENS.textSecondary,
+    marginTop: 4
   },
 
   /* Full Width Card (S-5 Fan & S-6 Dimmer) */
