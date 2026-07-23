@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
+import BrandLogo from '../components/BrandLogo';
 
 const TOKENS = {
   bg: '#0E0E0E',
@@ -239,9 +240,12 @@ export default function SchedulesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Automation Schedules</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <BrandLogo size="small" />
+          <Text style={styles.title}>Schedules</Text>
+        </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-          <MaterialCommunityIcons name="plus" size={20} color={TOKENS.bg} />
+          <MaterialCommunityIcons name="plus" size={18} color={TOKENS.bg} />
           <Text style={styles.addButtonText}>Create</Text>
         </TouchableOpacity>
       </View>
@@ -317,33 +321,44 @@ export default function SchedulesScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.label}>Select Device</Text>
               {devices.length === 0 ? (
                 <Text style={styles.warningText}>Please add a device first before configuring scheduling.</Text>
               ) : (
-                <View style={styles.devicePickerList}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.deviceChipsRow}
+                >
                   {devices.map((dev) => {
                     const isSelected = selectedDeviceId === dev.id;
+                    const devIcon = dev.type === 'fan' ? 'fan' : dev.type === 'light' ? 'lightbulb-outline' : 'power';
                     return (
                       <TouchableOpacity
                         key={dev.id}
                         style={[
-                          styles.deviceOption,
-                          isSelected && styles.deviceOptionSelected
+                          styles.deviceChip,
+                          isSelected && styles.deviceChipSelected
                         ]}
                         onPress={() => setSelectedDeviceId(dev.id)}
+                        activeOpacity={0.8}
                       >
+                        <MaterialCommunityIcons
+                          name={devIcon}
+                          size={16}
+                          color={isSelected ? TOKENS.bg : TOKENS.textSecondary}
+                        />
                         <Text style={[
-                          styles.deviceOptionText,
-                          isSelected && styles.deviceOptionTextSelected
+                          styles.deviceChipText,
+                          isSelected && styles.deviceChipTextSelected
                         ]}>
                           {dev.name}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               )}
 
               <Text style={styles.label}>Action</Text>
@@ -622,27 +637,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase'
   },
-  devicePickerList: {
-    backgroundColor: TOKENS.bg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: TOKENS.border,
-    maxHeight: 120,
-    padding: 6
+  deviceChipsRow: {
+    paddingVertical: 4,
+    gap: 8
   },
-  deviceOption: {
+  deviceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginBottom: 4
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#171616',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 6
   },
-  deviceOptionSelected: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)'
+  deviceChipSelected: {
+    backgroundColor: TOKENS.accent,
+    borderColor: TOKENS.accent
   },
-  deviceOptionText: {
-    color: TOKENS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600'
+  deviceChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: TOKENS.textSecondary
+  },
+  deviceChipTextSelected: {
+    color: TOKENS.bg,
+    fontWeight: '800'
   },
   deviceOptionTextSelected: {
     color: TOKENS.accent
