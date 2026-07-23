@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 const TOKENS = {
   bg: "#0E0E0E",
   glassBg: "rgba(28, 27, 27, 0.7)",
-  accentGreen: "#17DECA",
+  accentGreen: "#22C55E",
   accentInactive: "#4B5563",
   border: "rgba(255, 255, 255, 0.05)",
   textPrimary: "#E5E2E1",
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOn: {
-    backgroundColor: "rgba(23, 222, 202, 0.18)",
+    backgroundColor: "rgba(34, 197, 94, 0.18)",
     borderWidth: 0,
     ...Platform.select({
       ios: {
