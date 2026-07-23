@@ -465,12 +465,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
 
-  /* 3D Vertical Rocker Switch Styling (HTML Spec Solid Recessed Well + Neon Glow) */
+  /* 3D Vertical Rocker Switch Styling (Borderless Solid Socket Fill) */
   rockerOuterWell: {
     padding: 4,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 0, // REMOVED OUTLINE BORDER LINE
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -484,14 +484,14 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOn: {
-    backgroundColor: "rgba(34, 197, 94, 0.18)", // Solid Deep Recessed Well (Image 1 Style)
-    borderColor: "rgba(34, 197, 94, 0.6)",
+    backgroundColor: "rgba(34, 197, 94, 0.18)", // Solid Deep Recessed Socket
+    borderWidth: 0, // REMOVED OUTLINE BORDER LINE
     ...Platform.select({
       ios: {
         shadowColor: TOKENS.accentGreen,
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 14
+        shadowOpacity: 0.8,
+        shadowRadius: 16
       },
       android: {
         elevation: 10
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOff: {
-    backgroundColor: "#171616", // Solid Dark Recessed Well
-    borderColor: "rgba(255, 255, 255, 0.05)"
+    backgroundColor: "#171616", // Solid Dark Socket
+    borderWidth: 0 // REMOVED OUTLINE BORDER LINE
   },
   rockerInnerBody: {
     width: "100%",
@@ -508,8 +508,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)"
+    borderWidth: 0 // REMOVED OUTLINE BORDER LINE
   },
   rockerInnerBodyOn: {
     backgroundColor: "#2E2D2C"
