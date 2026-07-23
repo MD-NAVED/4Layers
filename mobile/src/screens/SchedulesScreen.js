@@ -36,9 +36,24 @@ const WEEKDAYS = [
   { key: 'sun', label: 'S' }
 ];
 
+const sortDevices = (devList, roomList = []) => {
+  return [...devList].sort((a, b) => {
+    // 1. Sort by Room
+    const roomA = roomList.find(r => r.id === a.room_id)?.name || '';
+    const roomB = roomList.find(r => r.id === b.room_id)?.name || '';
+    if (roomA !== roomB) return roomA.localeCompare(roomB);
+
+    // 2. Channel Suffix Order (1..7)
+    const suffixA = a.node_id?.includes('_') ? parseInt(a.node_id.split('_').pop(), 10) || 0 : 0;
+    const suffixB = b.node_id?.includes('_') ? parseInt(b.node_id.split('_').pop(), 10) || 0 : 0;
+    return suffixA - suffixB;
+  });
+};
+
 export default function SchedulesScreen() {
   const [schedules, setSchedules] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Add Schedule Modal
@@ -56,14 +71,19 @@ export default function SchedulesScreen() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [schedsRes, devsRes] = await Promise.all([
+      const [schedsRes, devsRes, roomsRes] = await Promise.all([
         apiClient.get('/api/schedules'),
-        apiClient.get('/api/devices')
+        apiClient.get('/api/devices'),
+        apiClient.get('/api/rooms').catch(() => ({ data: [] }))
       ]);
       setSchedules(schedsRes.data);
-      setDevices(devsRes.data);
-      if (devsRes.data.length > 0) {
-        setSelectedDeviceId(devsRes.data[0].id);
+      const roomList = roomsRes.data || [];
+      setRooms(roomList);
+      
+      const sorted = sortDevices(devsRes.data || [], roomList);
+      setDevices(sorted);
+      if (sorted.length > 0) {
+        setSelectedDeviceId(sorted[0].id);
       }
     } catch (error) {
       console.error('Failed to load schedules dataset:', error);
@@ -177,7 +197,9 @@ export default function SchedulesScreen() {
 
   const getDeviceName = (deviceId) => {
     const dev = devices.find(d => d.id === deviceId);
-    return dev ? dev.name : 'Unknown Device';
+    if (!dev) return 'Unknown Device';
+    const room = rooms.find(r => r.id === dev.room_id);
+    return room && rooms.length > 1 ? `${dev.name} (${room.name})` : dev.name;
   };
 
   const toggleDaySelection = (dayKey) => {
@@ -353,7 +375,10 @@ export default function SchedulesScreen() {
                           styles.deviceChipText,
                           isSelected && styles.deviceChipTextSelected
                         ]}>
-                          {dev.name}
+                          {(() => {
+                            const room = rooms.find(r => r.id === dev.room_id);
+                            return room && rooms.length > 1 ? `${dev.name} (${room.name})` : dev.name;
+                          })()}
                         </Text>
                       </TouchableOpacity>
                     );
