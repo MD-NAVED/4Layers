@@ -469,167 +469,19 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statusSubtitle}>FastAPI server is sleeping. Local telemetry simulation running.</Text>
           </View> : filteredDevices.length === 0 ? <View style={styles.statusBox}>
             <Text style={styles.statusText}>No devices in this room yet</Text>
-          </View> : <View style={styles.listContainer}>
-            {filteredDevices.map((device) => {
-              const isEnabled = !!device.status;
-              const getDeviceIcon = (type, active) => {
-                switch (type) {
-                  case 'light':
-                    return active ? 'lightbulb' : 'lightbulb-outline';
-                  case 'thermostat':
-                    return 'thermostat';
-                  case 'fan':
-                    return 'fan';
-                  default:
-                    return active ? 'power-plug' : 'power-plug-off';
-                }
-              };
-              
-              return (
-                <View
+          </View> : <View style={styles.gridContainer}>
+            {filteredDevices
+              .filter(d => !d.node_id?.endsWith('_7'))
+              .map((device) => (
+                <DeviceCard
                   key={device.id}
-                  style={[
-                    styles.listItem,
-                    !!isEnabled && styles.listItemActive
-                  ]}
-                >
-                  {/* Top Control Row */}
-                  <View style={styles.deviceRow}>
-                    <View style={styles.deviceLeftGroup}>
-                      <MaterialCommunityIcons 
-                        name={getDeviceIcon(device.type, isEnabled)} 
-                        size={24} 
-                        color={isEnabled ? TOKENS.accent : TOKENS.textSecondary} 
-                        style={styles.deviceIcon} 
-                      />
-                      <View style={styles.deviceMeta}>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                          <View style={[
-                            styles.statusDot, 
-                            { backgroundColor: device.is_online ? TOKENS.accent : TOKENS.error }
-                          ]} />
-                          <Text style={styles.deviceName} numberOfLines={1}>
-                            {device.name}
-                          </Text>
-                        </View>
-                        <Text style={styles.deviceTypeLabel}>
-                          {device.type.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    <CapsuleSwitch 
-                      isEnabled={isEnabled} 
-                      onToggle={() => handleToggleDevice(device.id)} 
-                    />
-                  </View>
-
-                  {/* Fan Speed Slider Controls */}
-                  {device.type === "fan" && (
-                    <View style={styles.sliderContainer}>
-                      <View style={styles.sliderTrackRow}>
-                        <MaterialCommunityIcons name="snowflake" size={14} color={TOKENS.textSecondary} />
-                        <View style={styles.sliderTrack}>
-                          <View style={[styles.sliderProgress, { width: `${(device.value / 5) * 100}%` }]} />
-                        </View>
-                        <MaterialCommunityIcons name="air-conditioner" size={14} color={TOKENS.textSecondary} />
-                      </View>
-                      <View style={styles.sliderAdjuster}>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, -1)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>-</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.sliderValueText}>Speed {device.value}/5</Text>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, 1)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>+</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Light Dimmer/Brightness Slider Controls (Only for LED Strip/Dimmable lights) */}
-                  {device.type === "light" && (
-                    device.name?.toLowerCase().includes('strip') || 
-                    device.name?.toLowerCase().includes('dimmable') || 
-                    device.name?.toLowerCase().includes('led') ||
-                    device.node_id?.endsWith('_6')
-                  ) && (
-                    <View style={styles.sliderContainer}>
-                      <View style={styles.sliderTrackRow}>
-                        <MaterialCommunityIcons name="brightness-5" size={14} color={TOKENS.textSecondary} />
-                        <View style={styles.sliderTrack}>
-                          <View style={[styles.sliderProgress, { width: `${device.value}%` }]} />
-                        </View>
-                        <MaterialCommunityIcons name="brightness-7" size={14} color={TOKENS.textSecondary} />
-                      </View>
-                      <View style={styles.sliderAdjuster}>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, -10)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>-</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.sliderValueText}>Brightness {device.value}%</Text>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, 10)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>+</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Thermostat Controls */}
-                  {device.type === "thermostat" && (
-                    <View style={styles.sliderContainer}>
-                      <View style={styles.sliderAdjuster}>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, -1)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>-</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.sliderValueText}>Temp {device.value}°F</Text>
-                        <TouchableOpacity 
-                          style={styles.sliderBtn} 
-                          onPress={() => handleAdjustValue(device.id, 1)}
-                          disabled={!isEnabled}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.sliderBtnText}>+</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Outlet Power consumption */}
-                  {device.type === "outlet" && (
-                    <View style={styles.powerConsumptionRow}>
-                      <Text style={styles.powerLabel}>Load Power</Text>
-                      <Text style={[styles.powerValue, isEnabled && styles.powerValueActive]}>
-                        {isEnabled ? `${device.value} W` : "0 W"}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>}
+                  device={device}
+                  onToggle={() => handleToggleDevice(device.id)}
+                  onIncrease={() => handleAdjustValue(device.id, device.type === 'fan' ? 1 : 10)}
+                  onDecrease={() => handleAdjustValue(device.id, device.type === 'fan' ? -1 : -10)}
+                />
+              ))}
+          </View>}}
 
       </ScrollView>
     </SafeAreaView>;
@@ -1169,6 +1021,13 @@ const styles = StyleSheet.create({
   },
   capsuleTextInactive: {
     color: "#4B5563"
+  },
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 8
   },
   listContainer: {
     flexDirection: "column",
