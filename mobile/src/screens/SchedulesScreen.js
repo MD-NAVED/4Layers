@@ -36,8 +36,19 @@ const WEEKDAYS = [
   { key: 'sun', label: 'S' }
 ];
 
-const sortDevices = (devList, roomList = []) => {
-  return [...devList].sort((a, b) => {
+const getUniqueDevices = (devList, roomList = []) => {
+  const seen = new Set();
+  const unique = [];
+
+  for (const dev of devList) {
+    const key = dev.node_id || dev.id;
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(dev);
+    }
+  }
+
+  return unique.sort((a, b) => {
     // 1. Sort by Room
     const roomA = roomList.find(r => r.id === a.room_id)?.name || '';
     const roomB = roomList.find(r => r.id === b.room_id)?.name || '';
@@ -80,7 +91,7 @@ export default function SchedulesScreen() {
       const roomList = roomsRes.data || [];
       setRooms(roomList);
       
-      const sorted = sortDevices(devsRes.data || [], roomList);
+      const sorted = getUniqueDevices(devsRes.data || [], roomList);
       setDevices(sorted);
       if (sorted.length > 0) {
         setSelectedDeviceId(sorted[0].id);
