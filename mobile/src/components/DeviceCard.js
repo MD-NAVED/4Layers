@@ -17,8 +17,8 @@ export function LuminaRockerSwitch({ isEnabled, onToggle, size = "normal" }) {
   const isMedium = size === "medium";
 
   // Dimensions
-  const width = isMaster ? 100 : isMedium ? 64 : 56;
-  const height = isMaster ? 160 : isMedium ? 104 : 88;
+  const width = isMaster ? 100 : isMedium ? 64 : 54;
+  const height = isMaster ? 170 : isMedium ? 116 : 104;
   const borderRadius = isMaster ? 40 : isMedium ? 26 : 22;
 
   // Animated 3D Tilt Offset (translateY)
@@ -484,19 +484,8 @@ const styles = StyleSheet.create({
     })
   },
   rockerOuterWellOn: {
-    backgroundColor: "rgba(34, 197, 94, 0.18)",
-    borderWidth: 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 16
-      },
-      android: {
-        elevation: 10
-      }
-    })
+    backgroundColor: "#171616",
+    borderWidth: 0
   },
   rockerOuterWellOff: {
     backgroundColor: "#171616",
@@ -504,10 +493,10 @@ const styles = StyleSheet.create({
   },
   rockerInnerBody: {
     width: "100%",
-    height: "86%",
+    height: "88%",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 0
   },
   rockerInnerBodyOn: {
@@ -524,10 +513,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
   },
   labelOnActive: {
-    color: TOKENS.accentGreen,
-    textShadowColor: TOKENS.accentGreen,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6
+    color: TOKENS.accentGreen
   },
   labelOffActive: {
     color: "#E5E2E1"
@@ -542,18 +528,7 @@ const styles = StyleSheet.create({
     borderRadius: 3
   },
   indicatorDotOn: {
-    backgroundColor: TOKENS.accentGreen,
-    ...Platform.select({
-      ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 10
-      },
-      android: {
-        elevation: 6
-      }
-    })
+    backgroundColor: TOKENS.accentGreen
   },
   indicatorDotOff: {
     backgroundColor: "rgba(229, 226, 225, 0.2)"
