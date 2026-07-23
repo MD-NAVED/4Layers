@@ -85,11 +85,17 @@ export default function SchedulesScreen() {
 
   // Add Schedule Modal
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState('ALL');
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [selectedAction, setSelectedAction] = useState('ON');
   const [scheduleTime, setScheduleTime] = useState('08:00'); // HH:MM
   const [selectedDays, setSelectedDays] = useState(['mon', 'tue', 'wed', 'thu', 'fri']);
   const [isSaving, setIsSaving] = useState(false);
+
+  const filteredDevices = useMemo(() => {
+    if (selectedRoomId === 'ALL') return devices;
+    return devices.filter(d => d.room_id === selectedRoomId);
+  }, [devices, selectedRoomId]);
 
   useEffect(() => {
     fetchData();
@@ -402,18 +408,87 @@ const normalizeTimeInput = (raw) => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Select Device</Text>
-              {devices.length === 0 ? (
-                <Text style={styles.warningText}>Please add a device first before configuring scheduling.</Text>
+              {rooms.length > 0 && (
+                <>
+                  <Text style={styles.label}>Select Room</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.deviceChipsRow, { marginBottom: 12 }]}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.deviceChip,
+                        selectedRoomId === 'ALL' && styles.deviceChipSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedRoomId('ALL');
+                        if (devices.length > 0) setSelectedDeviceId(devices[0].id);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name="home-outline"
+                        size={16}
+                        color={selectedRoomId === 'ALL' ? TOKENS.bg : TOKENS.textSecondary}
+                      />
+                      <Text style={[
+                        styles.deviceChipText,
+                        selectedRoomId === 'ALL' && styles.deviceChipTextSelected
+                      ]}>
+                        All Rooms
+                      </Text>
+                    </TouchableOpacity>
+
+                    {rooms.map((room) => {
+                      const isSelected = selectedRoomId === room.id;
+                      return (
+                        <TouchableOpacity
+                          key={room.id}
+                          style={[
+                            styles.deviceChip,
+                            isSelected && styles.deviceChipSelected
+                          ]}
+                          onPress={() => {
+                            setSelectedRoomId(room.id);
+                            const roomDevs = devices.filter(d => d.room_id === room.id);
+                            if (roomDevs.length > 0) setSelectedDeviceId(roomDevs[0].id);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons
+                            name="door"
+                            size={16}
+                            color={isSelected ? TOKENS.bg : TOKENS.textSecondary}
+                          />
+                          <Text style={[
+                            styles.deviceChipText,
+                            isSelected && styles.deviceChipTextSelected
+                          ]}>
+                            {room.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </>
+              )}
+
+              <Text style={styles.label}>Select Appliance / Switch</Text>
+              {filteredDevices.length === 0 ? (
+                <Text style={styles.warningText}>No devices available in this room.</Text>
               ) : (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.deviceChipsRow}
                 >
-                  {devices.map((dev) => {
+                  {filteredDevices.map((dev) => {
                     const isSelected = selectedDeviceId === dev.id;
                     const devIcon = dev.type === 'fan' ? 'fan' : dev.type === 'light' ? 'lightbulb-outline' : 'power';
+                    const room = rooms.find(r => r.id === dev.room_id);
+                    const labelText = room && selectedRoomId === 'ALL' && rooms.length > 1 ? `${dev.name} (${room.name})` : dev.name;
+
                     return (
                       <TouchableOpacity
                         key={dev.id}
@@ -433,10 +508,7 @@ const normalizeTimeInput = (raw) => {
                           styles.deviceChipText,
                           isSelected && styles.deviceChipTextSelected
                         ]}>
-                          {(() => {
-                            const room = rooms.find(r => r.id === dev.room_id);
-                            return room && rooms.length > 1 ? `${dev.name} (${room.name})` : dev.name;
-                          })()}
+                          {labelText}
                         </Text>
                       </TouchableOpacity>
                     );
