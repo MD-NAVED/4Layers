@@ -427,37 +427,6 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* HTML Code Section 1: Master Switch Glass Card */}
-        {filteredDevices.length > 0 && (
-          <View style={styles.masterGlassCard}>
-            <View style={styles.masterCardHeaderRow}>
-              <View>
-                <Text style={styles.controlCenterTag}>CONTROL CENTER</Text>
-                <Text style={styles.masterCardTitle}>Master Switch</Text>
-              </View>
-              <View style={styles.activeBadgePill}>
-                <View
-                  style={[
-                    styles.activeBadgeDot,
-                    { backgroundColor: filteredDevices.some(d => d.status) ? TOKENS.accent : TOKENS.textSecondary }
-                  ]}
-                />
-                <Text style={styles.activeBadgeText}>
-                  {filteredDevices.some(d => d.status) ? "ALL ACTIVE" : "STANDBY"}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ alignItems: "center", paddingVertical: 12 }}>
-              <LuminaRockerSwitch
-                isEnabled={filteredDevices.some(d => d.status)}
-                onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))}
-                size="master"
-              />
-            </View>
-          </View>
-        )}
-
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>SWITCHBOARD CONTROLS</Text>
           <TouchableOpacity onPress={() => navigation.navigate("Rooms")} style={styles.manageLink}>
@@ -476,7 +445,6 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statusText}>No devices in this room yet</Text>
           </View> : <View style={styles.gridContainer}>
             {filteredDevices
-              .filter(d => !d.node_id?.endsWith('_7'))
               .map((device) => (
                 <DeviceCard
                   key={device.id}

@@ -78,6 +78,7 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     nodeNum = suffix;
     if (suffix === 5) nodeLabel = "S-5 (Fan)";
     else if (suffix === 6) nodeLabel = "S-6 (Dimmer)";
+    else if (suffix === 7) nodeLabel = "M-S";
     else nodeLabel = `S-${suffix}`;
   } else if (device?.type === "fan") {
     nodeLabel = "S-5 (Fan)";
@@ -85,6 +86,9 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
   } else if (device?.type === "light") {
     nodeLabel = "S-6 (Dimmer)";
     nodeNum = 6;
+  } else if (device?.type === "master") {
+    nodeLabel = "M-S";
+    nodeNum = 7;
   }
 
   const isFan = nodeNum === 5 || device?.type === "fan";
