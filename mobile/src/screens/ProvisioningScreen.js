@@ -820,14 +820,14 @@ export default function ProvisioningScreen({ route, navigation }) {
             <TouchableOpacity 
               style={styles.entryMethodButton} 
               onPress={() => {
-                setPairingMethod('WIFI');
+                setPairingMethod('BLE');
                 setCurrentStage('INPUT');
               }}
             >
-              <MaterialCommunityIcons name="wifi" size={24} color={TOKENS.accent} />
+              <MaterialCommunityIcons name="bluetooth" size={24} color={TOKENS.accent} />
               <View style={styles.entryMethodTextGroup}>
-                <Text style={styles.entryMethodTitle}>Provision via SoftAP (Recommended)</Text>
-                <Text style={styles.entryMethodSubtitle}>Best choice for current SmartNest hardware</Text>
+                <Text style={styles.entryMethodTitle}>Provision via Bluetooth (BLE)</Text>
+                <Text style={styles.entryMethodSubtitle}>Pair using Bluetooth scan</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
             </TouchableOpacity>
@@ -835,14 +835,14 @@ export default function ProvisioningScreen({ route, navigation }) {
             <TouchableOpacity 
               style={styles.entryMethodButton} 
               onPress={() => {
-                setPairingMethod('BLE');
+                setPairingMethod('WIFI');
                 setCurrentStage('INPUT');
               }}
             >
-              <MaterialCommunityIcons name="bluetooth" size={24} color={TOKENS.textSecondary} />
+              <MaterialCommunityIcons name="wifi" size={24} color={TOKENS.accent} />
               <View style={styles.entryMethodTextGroup}>
-                <Text style={styles.entryMethodTitle}>Provision via Bluetooth (BLE)</Text>
-                <Text style={styles.entryMethodSubtitle}>Pair using Bluetooth scan</Text>
+                <Text style={styles.entryMethodTitle}>Provision via SoftAP</Text>
+                <Text style={styles.entryMethodSubtitle}>Connect via Wi-Fi hotspot</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={TOKENS.textSecondary} />
             </TouchableOpacity>
