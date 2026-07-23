@@ -129,44 +129,32 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
               </TouchableOpacity>
             </View>
 
-            {/* Fan Speed Controls Modal Content */}
+            {/* Fan Speed Controls Modal Content (- and + buttons) */}
             {isFan && (
               <View style={styles.modalControlGroup}>
                 <View style={styles.levelHeaderRow}>
                   <Text style={styles.subLabelCaps}>Speed Level</Text>
-                  <Text style={styles.speedValueText}>{device?.value || 3}</Text>
+                  <Text style={styles.speedValueText}>{device?.value || 3} / 5</Text>
                 </View>
 
-                {/* 5 Speed Level Bars */}
-                <View style={styles.speedBarsRow}>
-                  {[1, 2, 3, 4, 5].map((lvl) => {
-                    const speed = device?.value || 3;
-                    const isActive = lvl <= speed && isEnabled;
-                    const barHeights = [16, 24, 32, 40, 48];
-                    return (
-                      <TouchableOpacity
-                        key={lvl}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          if (lvl > speed) onIncrease();
-                          else if (lvl < speed) onDecrease();
-                        }}
-                        style={[
-                          styles.speedBar,
-                          { height: barHeights[lvl - 1] },
-                          isActive ? styles.speedBarActive : styles.speedBarInactive
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
+                <View style={styles.dimmerAdjusterRow}>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={onDecrease} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="minus" size={20} color={TOKENS.textPrimary} />
+                  </TouchableOpacity>
 
-                <View style={styles.speedNumLabelsRow}>
-                  <Text style={styles.speedNumText}>1</Text>
-                  <Text style={styles.speedNumText}>2</Text>
-                  <Text style={styles.speedNumText}>3</Text>
-                  <Text style={styles.speedNumText}>4</Text>
-                  <Text style={styles.speedNumText}>5</Text>
+                  <View style={styles.dimmerProgressBar}>
+                    <View
+                      style={[
+                        styles.dimmerProgressFill,
+                        { width: `${((device?.value || 3) / 5) * 100}%` },
+                        isEnabled ? styles.fillActive : styles.fillInactive
+                      ]}
+                    />
+                  </View>
+
+                  <TouchableOpacity style={styles.adjustBtn} onPress={onIncrease} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="plus" size={20} color={TOKENS.textPrimary} />
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
