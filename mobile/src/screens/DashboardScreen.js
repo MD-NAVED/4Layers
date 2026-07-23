@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import apiClient from "../api/client";
-import DeviceCard from "../components/DeviceCard";
+import DeviceCard, { RockerSwitch } from "../components/DeviceCard";
 import EnergyChart from "../components/EnergyChart";
 import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttClient";
 const TOKENS = {
@@ -427,25 +427,28 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Real Master Switch Card */}
+        {/* Floating 3D Neumorphic Master Switch Card */}
         {filteredDevices.length > 0 && (
           <View style={[styles.masterCard, filteredDevices.some(d => d.status) && styles.masterCardActive]}>
             <View style={styles.masterInfoGroup}>
-              <MaterialCommunityIcons 
-                name="power" 
-                size={32} 
-                color={filteredDevices.some(d => d.status) ? TOKENS.accent : TOKENS.textSecondary} 
-              />
-              <View style={styles.masterTextGroup}>
-                <Text style={styles.masterTitle}>MASTER SWITCH</Text>
-                <Text style={styles.masterSubtitle}>
-                  All {selectedRoom === "all" ? "home" : "room"} switches
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
+                  style={[
+                    styles.masterStatusDot,
+                    { backgroundColor: filteredDevices.some(d => d.status) ? "#A855F7" : "#4B5563" }
+                  ]}
+                />
+                <Text style={styles.masterShortLabel}>M-S</Text>
               </View>
+              <Text style={styles.masterTitle}>MASTER SWITCH</Text>
+              <Text style={styles.masterSubtitle}>
+                Toggle all {selectedRoom === "all" ? "home" : "room"} appliances
+              </Text>
             </View>
-            <CapsuleSwitch 
+            <RockerSwitch 
               isEnabled={filteredDevices.some(d => d.status)} 
               onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))} 
+              size="large"
             />
           </View>
         )}
@@ -1071,36 +1074,61 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: TOKENS.cardBg,
-    borderRadius: 16,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.06)",
     marginTop: 16,
     marginBottom: 16,
-    shadowColor: "#22C55E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12
+      },
+      android: {
+        elevation: 10
+      }
+    })
   },
   masterCardActive: {
-    borderColor: "rgba(34, 197, 94, 0.25)",
+    backgroundColor: "#242428",
+    borderColor: "rgba(168, 85, 247, 0.4)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#A855F7",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16
+      },
+      android: {
+        elevation: 12
+      }
+    })
   },
   masterInfoGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
     flex: 1,
+    marginRight: 12
+  },
+  masterStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginRight: 8
   },
-  masterTextGroup: {
-    flex: 1
+  masterShortLabel: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#F3F4F6",
+    letterSpacing: 0.5
   },
   masterTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
     color: TOKENS.textPrimary,
+    marginTop: 4,
     letterSpacing: 0.5
   },
   masterSubtitle: {
