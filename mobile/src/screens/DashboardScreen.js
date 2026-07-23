@@ -18,7 +18,7 @@ import { connectMqtt, disconnectMqtt, publishMessage } from "../services/mqttCli
 const TOKENS = {
   bg: "#0E0E0E",
   cardBg: "#1C1B1B",
-  accent: "#22C55E",
+  accent: "#17DECA",
   border: "rgba(255, 255, 255, 0.05)",
   textPrimary: "#E5E2E1",
   textSecondary: "#9CA3AF",
