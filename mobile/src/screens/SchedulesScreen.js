@@ -37,27 +37,43 @@ const WEEKDAYS = [
 ];
 
 const getUniqueDevices = (devList, roomList = []) => {
-  const seen = new Set();
-  const unique = [];
+  const channelMap = new Map();
 
   for (const dev of devList) {
-    const key = dev.node_id || dev.id;
-    if (key && !seen.has(key)) {
-      seen.add(key);
-      unique.push(dev);
+    // Determine channel key (ch_1..ch_7 or node_id)
+    let channelKey = dev.node_id || dev.id;
+    let cleanName = dev.name;
+
+    if (dev.node_id && dev.node_id.includes('_')) {
+      const suffix = dev.node_id.split('_').pop();
+      const s = parseInt(suffix, 10);
+      channelKey = `ch_${suffix}`;
+      if (s === 5) cleanName = 'Fan';
+      else if (s === 6) cleanName = 'Dimmer';
+      else if (s === 7) cleanName = 'Master Switch';
+      else if (s >= 1 && s <= 4) cleanName = `Switch ${s}`;
+    } else if (dev.name?.toLowerCase().includes('fan')) {
+      cleanName = 'Fan';
+      channelKey = 'ch_5';
+    } else if (dev.name?.toLowerCase().includes('dim') || dev.name?.toLowerCase().includes('strip')) {
+      cleanName = 'Dimmer';
+      channelKey = 'ch_6';
+    } else if (dev.name?.toLowerCase().includes('master')) {
+      cleanName = 'Master Switch';
+      channelKey = 'ch_7';
+    }
+
+    if (!channelMap.has(channelKey)) {
+      channelMap.set(channelKey, { ...dev, name: cleanName, channelKey });
     }
   }
 
-  return unique.sort((a, b) => {
-    // 1. Sort by Room
-    const roomA = roomList.find(r => r.id === a.room_id)?.name || '';
-    const roomB = roomList.find(r => r.id === b.room_id)?.name || '';
-    if (roomA !== roomB) return roomA.localeCompare(roomB);
+  const unique = Array.from(channelMap.values());
 
-    // 2. Channel Suffix Order (1..7)
-    const suffixA = a.node_id?.includes('_') ? parseInt(a.node_id.split('_').pop(), 10) || 0 : 0;
-    const suffixB = b.node_id?.includes('_') ? parseInt(b.node_id.split('_').pop(), 10) || 0 : 0;
-    return suffixA - suffixB;
+  return unique.sort((a, b) => {
+    const sA = a.node_id?.includes('_') ? parseInt(a.node_id.split('_').pop(), 10) || 0 : 0;
+    const sB = b.node_id?.includes('_') ? parseInt(b.node_id.split('_').pop(), 10) || 0 : 0;
+    return sA - sB;
   });
 };
 
