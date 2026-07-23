@@ -97,14 +97,14 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
   const isDimmer = nodeNum === 6 || (device?.type === "light" && (device?.name?.toLowerCase().includes("strip") || device?.name?.toLowerCase().includes("dim")));
   const hasSettings = isFan || isDimmer;
 
-  // 1. Full-Width Master Switch Card Layout (Big Prominent Title)
+  // 1. Full-Width Master Switch Card Layout (Room-specific)
   if (isMaster) {
     return (
       <View style={styles.fullWidthMasterCard}>
         <View style={styles.masterCardRow}>
           <View style={styles.masterTextGroup}>
             <Text style={styles.masterTitleProminent}>Master Switch</Text>
-            <Text style={styles.masterSubtitleText}>Toggle all room appliances</Text>
+            <Text style={styles.masterSubtitleText}>Master control for this room</Text>
           </View>
           <LuminaRockerSwitch isEnabled={isEnabled} onToggle={onToggle} size="medium" />
         </View>
