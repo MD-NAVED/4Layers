@@ -255,15 +255,18 @@ const styles = StyleSheet.create({
   /* Grid Card (S-1 to S-6) */
   gridGlassCard: {
     width: "48%",
+    height: 188,
     backgroundColor: TOKENS.glassBg,
     borderRadius: 24,
-    paddingVertical: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 12,
     marginBottom: 16,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     borderWidth: 1,
-    borderColor: TOKENS.border
+    borderColor: TOKENS.border,
+    position: "relative"
   },
 
   /* Full Width Master Card (Master Switch Room Master) */
@@ -308,13 +311,15 @@ const styles = StyleSheet.create({
 
   /* Gear Icon Button */
   gearButton: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: "#201F1F",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)"
   },
