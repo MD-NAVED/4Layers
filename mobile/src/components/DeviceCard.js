@@ -3,22 +3,19 @@ import { StyleSheet, Text, View, TouchableOpacity, Platform, Animated } from "re
 
 const TOKENS = {
   bg: "#121212",
-  cardBg: "#1C1C1E",
-  cardBgActive: "#24242A",
+  accentPurple: "#BB86FC",
   accentGreen: "#22C55E",
-  accentPurple: "#A855F7",
   border: "rgba(255, 255, 255, 0.06)",
-  borderActive: "rgba(34, 197, 94, 0.4)",
-  textPrimary: "#F3F4F6",
+  textPrimary: "#E5E2E1",
   textSecondary: "#9CA3AF",
   error: "#EF4444"
 };
 
-export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
+export function RockerSwitch({ isEnabled, onToggle, size = "normal", accentColor = TOKENS.accentPurple }) {
   const isLarge = size === "large";
-  const width = isLarge ? 56 : 46;
-  const height = isLarge ? 96 : 80;
-  const borderRadius = isLarge ? 28 : 24;
+  const width = isLarge ? 64 : 52;
+  const height = isLarge ? 108 : 88;
+  const borderRadius = isLarge ? 32 : 26;
 
   // Animated 3D Tilt Offset (translateY)
   const tiltAnim = useRef(new Animated.Value(isEnabled ? -4 : 4)).current;
@@ -39,7 +36,7 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
       style={[
         styles.rockerTrack,
         { width, height, borderRadius },
-        isEnabled ? styles.rockerTrackOn : styles.rockerTrackOff
+        isEnabled ? { borderColor: accentColor, shadowColor: accentColor } : styles.rockerTrackOff
       ]}
       accessibilityRole="switch"
       accessibilityState={{ checked: isEnabled }}
@@ -56,7 +53,12 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
         ]}
       >
         {/* Top half: ON Label */}
-        <Text style={[styles.rockerText, isEnabled ? styles.rockerTextOnActive : styles.rockerTextInactive]}>
+        <Text
+          style={[
+            styles.rockerText,
+            isEnabled ? { color: accentColor, textShadowColor: accentColor, textShadowRadius: 6 } : styles.rockerTextInactive
+          ]}
+        >
           ON
         </Text>
 
@@ -64,7 +66,7 @@ export function RockerSwitch({ isEnabled, onToggle, size = "normal" }) {
         <View
           style={[
             styles.centerLedDot,
-            isEnabled ? styles.centerLedDotOn : styles.centerLedDotOff
+            isEnabled ? { backgroundColor: accentColor, shadowColor: accentColor, shadowRadius: 6, opacity: 1 } : styles.centerLedDotOff
           ]}
         />
 
@@ -98,27 +100,18 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
     shortLabel = "DIM";
   }
 
-  return (
-    <View style={[styles.floatingCard, isEnabled && styles.floatingCardActive]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.infoBlock}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: device?.is_online ? TOKENS.accentGreen : TOKENS.error }
-              ]}
-            />
-            <Text style={styles.shortLabelText}>{shortLabel}</Text>
-          </View>
-          <Text style={styles.deviceName} numberOfLines={1}>
-            {device?.name || "Switch"}
-          </Text>
-        </View>
+  // Accent color selection (Purple by default as shown in Image 1)
+  const accentColor = TOKENS.accentPurple;
 
-        {/* 3D Animated Rocker Switch */}
-        <RockerSwitch isEnabled={isEnabled} onToggle={onToggle} />
-      </View>
+  return (
+    <View style={styles.floatingUnit}>
+      {/* Centered Minimal Label (S-1, S-2, etc.) */}
+      <Text style={[styles.centeredLabel, isEnabled && { color: accentColor }]}>
+        {shortLabel}
+      </Text>
+
+      {/* Large Centered 3D Rocker Switch */}
+      <RockerSwitch isEnabled={isEnabled} onToggle={onToggle} accentColor={accentColor} />
 
       {/* Adjuster controls for Light (dimmer), Thermostat, or Fan */}
       {(device?.type === "light" || device?.type === "thermostat" || device?.type === "fan") && (
@@ -144,114 +137,66 @@ export default function DeviceCard({ device, onToggle, onIncrease, onDecrease })
 }
 
 const styles = StyleSheet.create({
-  floatingCard: {
+  floatingUnit: {
     width: "48%",
-    backgroundColor: TOKENS.cardBg,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: TOKENS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    marginBottom: 20,
+    backgroundColor: "transparent"
+  },
+  centeredLabel: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: TOKENS.textPrimary,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
+  },
 
-    // Floating 3D Shadows
+  /* 3D Animated Rocker Switch Styling (Image 1 Specs) */
+  rockerTrack: {
+    backgroundColor: "#1C1B1B",
+    padding: 3,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+
+    // Ambient Glow Effect
     ...Platform.select({
       ios: {
-        shadowColor: "#000000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.45,
-        shadowRadius: 10
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16
       },
       android: {
         elevation: 8
       }
     })
   },
-  floatingCardActive: {
-    backgroundColor: TOKENS.cardBgActive,
-    borderColor: TOKENS.borderActive,
-    ...Platform.select({
-      ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12
-      },
-      android: {
-        elevation: 10
-      }
-    })
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  infoBlock: {
-    flex: 1,
-    marginRight: 6
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 6
-  },
-  shortLabelText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: TOKENS.textPrimary,
-    letterSpacing: 0.5
-  },
-  deviceName: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: TOKENS.textSecondary,
-    marginTop: 4
-  },
-
-  /* 3D Animated Rocker Switch Styling */
-  rockerTrack: {
-    backgroundColor: "#0E0E0E",
-    padding: 3,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.08)"
-  },
-  rockerTrackOn: {
-    borderColor: TOKENS.accentGreen,
-    ...Platform.select({
-      ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 8
-      },
-      android: {
-        elevation: 6
-      }
-    })
-  },
   rockerTrackOff: {
-    borderColor: "rgba(255, 255, 255, 0.05)"
+    borderColor: "rgba(255, 255, 255, 0.04)"
   },
   rockerBody: {
     width: "100%",
     height: "92%",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)"
+    borderColor: "rgba(255, 255, 255, 0.08)"
   },
   rockerBodyOn: {
-    backgroundColor: "#202024",
+    backgroundColor: "#262525",
     ...Platform.select({
       ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 6
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8
       },
       android: {
         elevation: 4
@@ -259,71 +204,58 @@ const styles = StyleSheet.create({
     })
   },
   rockerBodyOff: {
-    backgroundColor: "#1C1B1B"
+    backgroundColor: "#181717"
   },
 
-  /* Center Status LED Dot */
+  /* Emissive Center Status LED Dot */
   centerLedDot: {
     width: 6,
     height: 6,
     borderRadius: 3
   },
-  centerLedDotOn: {
-    backgroundColor: TOKENS.accentGreen,
-    ...Platform.select({
-      ios: {
-        shadowColor: TOKENS.accentGreen,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.9,
-        shadowRadius: 6
-      },
-      android: {
-        elevation: 4
-      }
-    })
-  },
   centerLedDotOff: {
-    backgroundColor: "#4B5563"
+    backgroundColor: "#404040",
+    opacity: 0.4
   },
 
   rockerText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "900",
-    letterSpacing: 0.5
-  },
-  rockerTextOnActive: {
-    color: TOKENS.accentGreen
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
   },
   rockerTextOffActive: {
     color: "#D1D5DB"
   },
   rockerTextInactive: {
-    color: "#4B5563"
+    color: "#3F3F46"
   },
 
-  /* Adjuster row for Fan & Dimmer */
+  /* Minimal Adjuster row for Fan & Dimmer */
   adjusterRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#121214",
-    borderRadius: 12,
-    padding: 4,
+    backgroundColor: "#181717",
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     marginTop: 12,
+    width: "90%",
     borderWidth: 1,
-    borderColor: TOKENS.border
+    borderColor: "rgba(255, 255, 255, 0.06)"
   },
   adjustButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: "#242428",
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: "#262525",
     alignItems: "center",
     justifyContent: "center"
   },
   adjustButtonText: {
     color: TOKENS.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800"
   },
   valueContainer: {
@@ -331,7 +263,7 @@ const styles = StyleSheet.create({
   },
   valueText: {
     color: TOKENS.textPrimary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800"
   }
 });

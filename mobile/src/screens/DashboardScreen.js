@@ -427,28 +427,22 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Floating 3D Neumorphic Master Switch Card */}
+        {/* Centered Floating 3D Master Switch (Image 1 Style) */}
         {filteredDevices.length > 0 && (
-          <View style={[styles.masterCard, filteredDevices.some(d => d.status) && styles.masterCardActive]}>
-            <View style={styles.masterInfoGroup}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <View
-                  style={[
-                    styles.masterStatusDot,
-                    { backgroundColor: filteredDevices.some(d => d.status) ? "#A855F7" : "#4B5563" }
-                  ]}
-                />
-                <Text style={styles.masterShortLabel}>M-S</Text>
-              </View>
-              <Text style={styles.masterTitle}>MASTER SWITCH</Text>
-              <Text style={styles.masterSubtitle}>
-                Toggle all {selectedRoom === "all" ? "home" : "room"} appliances
-              </Text>
-            </View>
+          <View style={styles.masterUnit}>
+            <Text
+              style={[
+                styles.masterCenteredLabel,
+                filteredDevices.some(d => d.status) && { color: "#BB86FC" }
+              ]}
+            >
+              M-S
+            </Text>
             <RockerSwitch 
               isEnabled={filteredDevices.some(d => d.status)} 
               onToggle={() => handleBulkControl(!filteredDevices.some(d => d.status))} 
               size="large"
+              accentColor="#BB86FC"
             />
           </View>
         )}
@@ -1213,5 +1207,20 @@ const styles = StyleSheet.create({
     width: 1,
     height: 28,
     backgroundColor: TOKENS.border
+  },
+  masterUnit: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    marginVertical: 8
+  },
+  masterCenteredLabel: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#E5E2E1",
+    letterSpacing: 2,
+    marginBottom: 12,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace"
   }
 });
